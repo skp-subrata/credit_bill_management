@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}User Management & RBAC - Hospital Credit Billing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">User Management & Role-Based Access Control (RBAC)</h1>
+            <p class="text-xs text-slate-400 mt-1">Manage system operators, unit administrators, and role permissions.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add User Form -->
+        <div class="glass-panel p-6 h-fit">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Create New User Account</h2>
+            <form method="POST" action="{{ url_for('users.users') }}" class="space-y-3">
+                <div>
+                    <label for="employee_id" class="form-label">Employee ID (Unique)</label>
+                    <input type="text" id="employee_id" name="employee_id" required placeholder="e.g. EMP003" class="form-input">
+                </div>
+
+                <div>
+                    <label for="name" class="form-label">Full Name</label>
+                    <input type="text" id="name" name="name" required placeholder="Dr. Sarah Connor" class="form-input">
+                </div>
+
+                <div>
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" id="email" name="email" required placeholder="sarah@hospital.com" class="form-input">
+                </div>
+
+                <div>
+                    <label for="phone" class="form-label">Phone</label>
+                    <input type="text" id="phone" name="phone" placeholder="+1-555-0199" class="form-input">
+                </div>
+
+                <div>
+                    <label for="password" class="form-label">Initial Password</label>
+                    <input type="password" id="password" name="password" required placeholder="••••••••" class="form-input">
+                </div>
+
+                <div>
+                    <label for="role_id" class="form-label">System Role</label>
+                    <select id="role_id" name="role_id" required class="form-input">
+                        {% for r in roles %}
+                        <option value="{{ r.id }}">{{ r.role_name }} ({{ r.role_code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="hospital_unit_id" class="form-label">Assigned Hospital Unit</label>
+                    <select id="hospital_unit_id" name="hospital_unit_id" class="form-input">
+                        <option value="">-- All Units (Super Admin) --</option>
+                        {% for u in units %}
+                        <option value="{{ u.unit_id }}">{{ u.unit_code }} - {{ u.hospital_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2.5 mt-2">
+                    Create User Account
+                </button>
+            </form>
+        </div>
+
+        <!-- Users List Table -->
+        <div class="lg:col-span-2 glass-panel p-6">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">System Accounts ({{ users|length }})</h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                            <th class="pb-3">Employee ID</th>
+                            <th class="pb-3">Name & Email</th>
+                            <th class="pb-3">Role</th>
+                            <th class="pb-3">Assigned Unit</th>
+                            <th class="pb-3">Status</th>
+                            <th class="pb-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                        {% for u in users %}
+                        <tr>
+                            <td class="py-3 font-bold text-indigo-400">{{ u.employee_id }}</td>
+                            <td class="py-3 font-medium text-slate-200">
+                                {{ u.name }}
+                                <div class="text-[10px] text-slate-400">{{ u.email }}</div>
+                            </td>
+                            <td class="py-3">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
+                                    {% if u.role.role_code == 'super_admin' %}bg-indigo-500/10 text-indigo-400 border border-indigo-500/20
+                                    {% elif u.role.role_code == 'admin' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
+                                    {% else %}bg-slate-500/10 text-slate-400 border border-slate-500/20{% endif %}">
+                                    {{ u.role.role_name }}
+                                </span>
+                            </td>
+                            <td class="py-3 text-slate-400">{{ u.hospital_unit.unit_code if u.hospital_unit else 'All Units' }}</td>
+                            <td class="py-3">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
+                                    {% if u.status == 'ACTIVE' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                                    {% else %}bg-rose-500/10 text-rose-400 border border-rose-500/20{% endif %}">
+                                    {{ u.status }}
+                                </span>
+                            </td>
+                            <td class="py-3 text-right">
+                                {% if u.id != session.get('user_id') %}
+                                <form method="POST" action="{{ url_for('users.toggle_user_status', user_id=u.id) }}" class="inline">
+                                    <button type="submit" class="btn-secondary text-[10px] py-1 px-2.5">
+                                        {% if u.status == 'ACTIVE' %}Deactivate{% else %}Activate{% endif %}
+                                    </button>
+                                </form>
+                                {% else %}
+                                <span class="text-[10px] text-slate-500 italic">Self</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

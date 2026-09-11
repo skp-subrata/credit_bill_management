@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - Hospital Credit Billing System{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto py-12">
+    <div class="glass-panel p-8 border-t-4 border-indigo-600 shadow-2xl relative overflow-hidden">
+        
+        <div class="text-center mb-8">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center font-black text-2xl mx-auto mb-3 border border-indigo-500/20 shadow-inner">
+                🏥
+            </div>
+            <h1 class="text-2xl font-black text-slate-100">Hospital Billing Sign In</h1>
+            <p class="text-xs text-slate-400 mt-1">Enterprise Credit Billing & Payer Management Portal</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-4">
+            <div>
+                <label for="employee_id" class="form-label">Employee ID</label>
+                <input type="text" id="employee_id" name="employee_id" required placeholder="e.g. EMP001" class="form-input">
+            </div>
+
+            <div>
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••" class="form-input">
+            </div>
+
+            <button type="submit" class="btn-primary w-full py-3 mt-2">
+                Sign In to Console &rarr;
+            </button>
+        </form>
+
+        <div class="mt-6 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+            <div class="font-bold text-slate-300">Default Demo Credentials:</div>
+            <div>• Super Admin: <code class="text-indigo-400">EMP001</code> / <code class="text-indigo-400">admin123</code></div>
+            <div>• Operator: <code class="text-indigo-400">EMP002</code> / <code class="text-indigo-400">operator123</code></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

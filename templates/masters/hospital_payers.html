@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Hospital-Payer Configurations - Hospital Credit Billing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">Hospital-Payer Configurations</h1>
+            <p class="text-xs text-slate-400 mt-1">Configure unit-specific credit rules, TAT submission days, document rules, and dispatch modes per Payer.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add Config Form -->
+        <div class="glass-panel p-6 h-fit">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Configure Unit Payer</h2>
+            <form method="POST" action="{{ url_for('masters.hospital_payers') }}" class="space-y-3">
+                <div>
+                    <label for="unit_id" class="form-label">Hospital Unit</label>
+                    <select id="unit_id" name="unit_id" required class="form-input">
+                        {% for u in units %}
+                        <option value="{{ u.unit_id }}" {% if u.unit_id == active_unit_id %}selected{% endif %}>{{ u.unit_code }} - {{ u.hospital_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="payer_id" class="form-label">Global Payer</label>
+                    <select id="payer_id" name="payer_id" required class="form-input">
+                        {% for p in payers %}
+                        <option value="{{ p.payer_id }}">{{ p.payer_name }} ({{ p.payer_code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="payer_code_at_unit" class="form-label">Unit Payer Code (Optional)</label>
+                    <input type="text" id="payer_code_at_unit" name="payer_code_at_unit" placeholder="UNIT-STAR-01" class="form-input">
+                </div>
+
+                <div>
+                    <label for="submission_tat_days" class="form-label">Submission TAT (Days)</label>
+                    <input type="number" id="submission_tat_days" name="submission_tat_days" value="15" required class="form-input">
+                </div>
+
+                <div>
+                    <label for="dispatch_mode" class="form-label">Default Dispatch Mode</label>
+                    <select id="dispatch_mode" name="dispatch_mode" class="form-input">
+                        <option value="COURIER">COURIER</option>
+                        <option value="EMAIL">EMAIL</option>
+                        <option value="HAND_DELIVERY">HAND DELIVERY</option>
+                        <option value="PORTAL">PORTAL</option>
+                        <option value="REGISTERED_POST">REGISTERED POST</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-4 py-1">
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                        <input type="checkbox" name="credit_allowed" checked class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0">
+                        Credit Allowed
+                    </label>
+
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                        <input type="checkbox" name="approval_required" checked class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0">
+                        Pre-Approval Req.
+                    </label>
+                </div>
+
+                <div>
+                    <label for="document_requirement" class="form-label">Document Requirements</label>
+                    <textarea id="document_requirement" name="document_requirement" rows="2" placeholder="Pre-Auth Copy, Discharge Summary, Itemized Bill" class="form-input h-auto py-2"></textarea>
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2.5 mt-2">
+                    Save Payer Config
+                </button>
+            </form>
+        </div>
+
+        <!-- Config List Table -->
+        <div class="lg:col-span-2 glass-panel p-6">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Unit Payer Rules ({{ hp_configs|length }})</h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                            <th class="pb-3">Unit</th>
+                            <th class="pb-3">Payer Name</th>
+                            <th class="pb-3">TAT Days</th>
+                            <th class="pb-3">Dispatch Mode</th>
+                            <th class="pb-3">Pre-Approval</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                        {% for hp in hp_configs %}
+                        <tr>
+                            <td class="py-3 font-bold text-slate-200">{{ hp.hospital_unit.unit_code }}</td>
+                            <td class="py-3 font-medium text-indigo-400">{{ hp.payer.payer_name }}</td>
+                            <td class="py-3 text-amber-400 font-bold">{{ hp.submission_tat_days }} Days</td>
+                            <td class="py-3 text-slate-400">{{ hp.dispatch_mode }}</td>
+                            <td class="py-3">
+                                {% if hp.approval_required %}
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Yes</span>
+                                {% else %}
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20">No</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

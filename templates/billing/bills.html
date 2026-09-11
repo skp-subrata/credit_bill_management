@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Bills & Credit Processing - Hospital Credit Billing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">Bill Master & Credit Queue</h1>
+            <p class="text-xs text-slate-400 mt-1">Generate IP/OP bills and process credit bills through verification, dispatch, and settlement.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Generate Bill Form -->
+        <div class="glass-panel p-6 h-fit">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Generate Bill Statement</h2>
+            <form method="POST" action="{{ url_for('billing.bills') }}" class="space-y-3">
+                <div>
+                    <label for="bill_number" class="form-label">Bill Number (Globally Unique)</label>
+                    <input type="text" id="bill_number" name="bill_number" required placeholder="e.g. BILL-2026-001" class="form-input">
+                </div>
+
+                <div>
+                    <label for="encounter_type" class="form-label">Encounter Type</label>
+                    <select id="encounter_type" name="encounter_type" required onchange="toggleEncounterSelect(this.value)" class="form-input">
+                        <option value="IP">IP (Inpatient)</option>
+                        <option value="OP">OP (Outpatient)</option>
+                    </select>
+                </div>
+
+                <div id="ip_select_group">
+                    <label for="admission_id" class="form-label">Select IP Admission</label>
+                    <select id="admission_id" name="admission_id" class="form-input">
+                        <option value="">-- Select IP Admission --</option>
+                        {% for a in ip_admissions %}
+                        <option value="{{ a.admission_id }}">{{ a.ip_number }} - {{ a.patient_name_snapshot }} ({% if a.admission_status == 'DISCHARGED' %}Discharged{% else %}Admitted{% endif %})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="op_select_group" class="hidden">
+                    <label for="episode_id" class="form-label">Select OP Episode</label>
+                    <select id="episode_id" name="episode_id" class="form-input">
+                        <option value="">-- Select OP Episode --</option>
+                        {% for e in op_episodes %}
+                        <option value="{{ e.episode_id }}">{{ e.op_number }} - {{ e.patient_name_snapshot }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="bill_type" class="form-label">Bill Type</label>
+                    <select id="bill_type" name="bill_type" class="form-input">
+                        <option value="CREDIT">CREDIT (Requires Payer)</option>
+                        <option value="CASH">CASH (Direct Payment)</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="bill_date" class="form-label">Bill Date</label>
+                        <input type="date" id="bill_date" name="bill_date" required class="form-input">
+                    </div>
+                    <div>
+                        <label for="bill_amount" class="form-label">Total Amount ($)</label>
+                        <input type="number" step="0.01" id="bill_amount" name="bill_amount" required placeholder="1500.00" class="form-input">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2.5 mt-2">
+                    Generate Bill Statement
+                </button>
+            </form>
+        </div>
+
+        <!-- Bills List Table -->
+        <div class="lg:col-span-2 glass-panel p-6 space-y-4">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">All Billing Transactions ({{ bills|length }})</h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                            <th class="pb-3">Bill Number</th>
+                            <th class="pb-3">Patient Name</th>
+                            <th class="pb-3">Type & Payer</th>
+                            <th class="pb-3">Amount</th>
+                            <th class="pb-3">Status</th>
+                            <th class="pb-3 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                        {% for b in bills %}
+                        <tr>
+                            <td class="py-3 font-bold text-indigo-400">
+                                <a href="{{ url_for('billing.bill_detail', bill_id=b.bill_id) }}" class="hover:underline">{{ b.bill_number }}</a>
+                                <div class="text-[10px] text-slate-400">{{ b.encounter_type }} | {{ b.bill_date }}</div>
+                            </td>
+                            <td class="py-3 font-medium text-slate-200">{{ b.patient_name_snapshot }}</td>
+                            <td class="py-3">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
+                                    {% if b.bill_type == 'CREDIT' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
+                                    {% else %}bg-slate-500/10 text-slate-400 border border-slate-500/20{% endif %}">
+                                    {{ b.bill_type }}
+                                </span>
+                                <div class="text-[10px] text-slate-400 mt-0.5">{{ b.payer.payer_name if b.payer else 'Cash' }}</div>
+                            </td>
+                            <td class="py-3 font-bold text-slate-200">
+                                ${{ "%.2f"|format(b.bill_amount) }}
+                                <div class="text-[10px] text-amber-400">Due: ${{ "%.2f"|format(b.outstanding_amount) }}</div>
+                            </td>
+                            <td class="py-3">
+                                <span class="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full 
+                                    {% if b.bill_status == 'CLOSED' or b.bill_status == 'PAID' %}
+                                        bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                                    {% elif b.bill_status == 'DISPATCHED' %}
+                                        bg-sky-500/10 text-sky-400 border border-sky-500/20
+                                    {% elif b.bill_status == 'VERIFIED' %}
+                                        bg-indigo-500/10 text-indigo-400 border border-indigo-500/20
+                                    {% else %}
+                                        bg-amber-500/10 text-amber-400 border border-amber-500/20
+                                    {% endif %}">
+                                    {{ b.bill_status }}
+                                </span>
+                            </td>
+                            <td class="py-3 text-right">
+                                <a href="{{ url_for('billing.bill_detail', bill_id=b.bill_id) }}" class="btn-secondary text-[10px] py-1 px-2.5">
+                                    Manage &rarr;
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function toggleEncounterSelect(type) {
+        if (type === 'IP') {
+            document.getElementById('ip_select_group').classList.remove('hidden');
+            document.getElementById('op_select_group').classList.add('hidden');
+        } else {
+            document.getElementById('ip_select_group').classList.add('hidden');
+            document.getElementById('op_select_group').classList.remove('hidden');
+        }
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}OP Episodes - Hospital Credit Billing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">Outpatient (OP) Episodes</h1>
+            <p class="text-xs text-slate-400 mt-1">Register OP encounters and proceed directly to billing.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- New OP Episode Form -->
+        <div class="glass-panel p-6 h-fit">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Register OP Visit</h2>
+            <form method="POST" action="{{ url_for('encounters.op_episodes') }}" class="space-y-3">
+                <div>
+                    <label for="op_number" class="form-label">OP Number (Unique within Unit)</label>
+                    <input type="text" id="op_number" name="op_number" required placeholder="e.g. OP-2026-001" class="form-input">
+                </div>
+
+                <div>
+                    <label for="patient_id" class="form-label">Select Patient (UHID)</label>
+                    <select id="patient_id" name="patient_id" required class="form-input">
+                        {% for p in patients %}
+                        <option value="{{ p.patient_id }}">{{ p.patient_name }} ({{ p.uhid }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="visit_date" class="form-label">Visit Date</label>
+                    <input type="date" id="visit_date" name="visit_date" required class="form-input">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="department" class="form-label">Department</label>
+                        <input type="text" id="department" name="department" placeholder="Outpatient / Ortho" class="form-input">
+                    </div>
+                    <div>
+                        <label for="doctor_name" class="form-label">Attending Doctor</label>
+                        <input type="text" id="doctor_name" name="doctor_name" placeholder="Dr. Adams" class="form-input">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="hospital_payer_id" class="form-label">Credit Payer (Optional)</label>
+                    <select id="hospital_payer_id" name="hospital_payer_id" class="form-input">
+                        <option value="">-- None (Cash Patient) --</option>
+                        {% for hp in hospital_payers %}
+                        <option value="{{ hp.hospital_payer_id }}">{{ hp.payer.payer_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2.5 mt-2">
+                    Register OP Episode
+                </button>
+            </form>
+        </div>
+
+        <!-- OP Episodes Queue -->
+        <div class="lg:col-span-2 glass-panel p-6 space-y-4">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">OP Visits Queue ({{ episodes|length }})</h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                            <th class="pb-3">OP Number</th>
+                            <th class="pb-3">Patient Name</th>
+                            <th class="pb-3">Visit Date</th>
+                            <th class="pb-3">Department & Doctor</th>
+                            <th class="pb-3">Payer</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                        {% for e in episodes %}
+                        <tr>
+                            <td class="py-3 font-bold text-indigo-400">{{ e.op_number }}</td>
+                            <td class="py-3 font-medium text-slate-200">{{ e.patient_name_snapshot }}</td>
+                            <td class="py-3 text-slate-400">{{ e.visit_date }}</td>
+                            <td class="py-3 text-slate-400">{{ e.department }} ({{ e.doctor_name or 'N/A' }})</td>
+                            <td class="py-3 text-slate-400">{{ e.payer.payer_name if e.payer else 'Cash' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

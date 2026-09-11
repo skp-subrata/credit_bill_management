@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Credit Bill Management{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Header & Quick Actions -->
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-800 dark:text-slate-100">Welcome, {{ session.get('full_name') }} 👋</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Here is an overview of your active credit cards and bill statements.</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your user profile and access application features.</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('cards') }}" class="btn-secondary text-sm">
+                + Add Card
+            </a>
+            <a href="{{ url_for('bills') }}" class="btn-primary text-sm">
+                + Add Bill
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Metric Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div class="glass-card p-6 border-l-4 border-indigo-500">
+            <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Active Cards</div>
+            <div class="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mt-2">{{ metrics.total_cards }}</div>
+        </div>
+
+        <div class="glass-card p-6 border-l-4 border-amber-500">
+            <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Outstanding Amount</div>
+            <div class="text-3xl font-extrabold text-amber-600 dark:text-amber-400 mt-2">${{ "%.2f"|format(metrics.total_unpaid) }}</div>
+        </div>
+
+        <div class="glass-card p-6 border-l-4 border-emerald-500">
+            <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Credit Limit</div>
+            <div class="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">${{ "%.2f"|format(metrics.total_limit) }}</div>
+        </div>
+
+        <div class="glass-card p-6 border-l-4 border-rose-500">
+            <div class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Unpaid Statements</div>
+            <div class="text-3xl font-extrabold text-rose-600 dark:text-rose-400 mt-2">{{ metrics.unpaid_count }}</div>
+        </div>
+    </div>
+
+    <!-- Recent Bills Table -->
+    <!-- User Profile Summary Card -->
+    <div class="glass-card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">Recent Bills</h2>
+            <a href="{{ url_for('bills') }}" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">View All &rarr;</a>
+        <h2 class="text-lg font-bold mb-4 text-slate-800 dark:text-slate-100">Account Details</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div class="p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50">
+                <span class="text-xs text-slate-400 uppercase font-semibold block mb-1">Full Name</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100">{{ user_info.full_name }}</span>
+            </div>
+            <div class="p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50">
+                <span class="text-xs text-slate-400 uppercase font-semibold block mb-1">Username</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100">@{{ user_info.username }}</span>
+            </div>
+            <div class="p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800/50">
+                <span class="text-xs text-slate-400 uppercase font-semibold block mb-1">Role</span>
+                <span class="font-bold text-indigo-600 dark:text-indigo-400 capitalize">{{ user_info.role }}</span>
+            </div>
+        </div>
+
+        {% if bills %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        <th class="pb-3">Card Name</th>
+                        <th class="pb-3">Statement Date</th>
+                        <th class="pb-3">Due Date</th>
+                        <th class="pb-3">Bill Amount</th>
+                        <th class="pb-3">Status</th>
+                        <th class="pb-3 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    {% for bill in bills %}
+                    <tr>
+                        <td class="py-3.5 font-medium">
+                            {{ bill.card_name }} <span class="text-xs text-slate-400">(*{{ bill.card_number_last4 }})</span>
+                        </td>
+                        <td class="py-3.5 text-slate-500">{{ bill.billing_date }}</td>
+                        <td class="py-3.5 font-medium text-slate-700 dark:text-slate-300">{{ bill.due_date }}</td>
+                        <td class="py-3.5 font-bold">${{ "%.2f"|format(bill.bill_amount) }}</td>
+                        <td class="py-3.5">
+                            {% if bill.status == 'paid' %}
+                                <span class="px-2.5 py-1 text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">Paid</span>
+                            {% elif bill.status == 'partially_paid' %}
+                                <span class="px-2.5 py-1 text-xs rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">Partial</span>
+                            {% else %}
+                                <span class="px-2.5 py-1 text-xs rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/20">Unpaid</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3.5 text-right">
+                            {% if bill.status != 'paid' %}
+                            <form method="POST" action="{{ url_for('pay_bill', bill_id=bill.id) }}" class="inline">
+                                <button type="submit" class="btn-primary text-xs py-1 px-3">Mark Paid</button>
+                            </form>
+                            {% else %}
+                            <span class="text-xs text-slate-400 font-medium">Completed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-10 text-slate-500">
+            No credit bills recorded yet. <a href="{{ url_for('bills') }}" class="text-indigo-600 font-semibold hover:underline">Add your first bill</a>.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Payers Master - Hospital Credit Billing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">Global Payer Master</h1>
+            <p class="text-xs text-slate-400 mt-1">Manage insurance companies, TPAs, corporates, and government billing entities.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Add Payer Form -->
+        <div class="glass-panel p-6 h-fit">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Add Global Payer</h2>
+            <form method="POST" action="{{ url_for('masters.payers') }}" class="space-y-3">
+                <div>
+                    <label for="payer_code" class="form-label">Payer Code (Unique)</label>
+                    <input type="text" id="payer_code" name="payer_code" required placeholder="e.g. PAY-INS-02" class="form-input">
+                </div>
+
+                <div>
+                    <label for="payer_name" class="form-label">Payer Name</label>
+                    <input type="text" id="payer_name" name="payer_name" required placeholder="Star Health Insurance" class="form-input">
+                </div>
+
+                <div>
+                    <label for="payer_type" class="form-label">Payer Type</label>
+                    <select id="payer_type" name="payer_type" class="form-input">
+                        <option value="INSURANCE">INSURANCE</option>
+                        <option value="TPA">TPA</option>
+                        <option value="CORPORATE">CORPORATE</option>
+                        <option value="GOVERNMENT">GOVERNMENT</option>
+                        <option value="PSU">PSU</option>
+                        <option value="OTHER">OTHER</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="contact_person" class="form-label">Contact Person</label>
+                    <input type="text" id="contact_person" name="contact_person" placeholder="Claims Officer" class="form-input">
+                </div>
+
+                <div>
+                    <label for="email" class="form-label">Contact Email</label>
+                    <input type="email" id="email" name="email" placeholder="claims@payer.com" class="form-input">
+                </div>
+
+                <div>
+                    <label for="phone" class="form-label">Contact Phone</label>
+                    <input type="text" id="phone" name="phone" placeholder="+1-800-222-1111" class="form-input">
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2.5 mt-2">
+                    Create Payer
+                </button>
+            </form>
+        </div>
+
+        <!-- Payers List Table -->
+        <div class="lg:col-span-2 glass-panel p-6">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Registered Payers ({{ payers|length }})</h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                            <th class="pb-3">Payer Code</th>
+                            <th class="pb-3">Payer Name</th>
+                            <th class="pb-3">Type</th>
+                            <th class="pb-3">Contact</th>
+                            <th class="pb-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                        {% for p in payers %}
+                        <tr>
+                            <td class="py-3 font-bold text-indigo-400">{{ p.payer_code }}</td>
+                            <td class="py-3 font-medium text-slate-200">{{ p.payer_name }}</td>
+                            <td class="py-3">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                    {{ p.payer_type }}
+                                </span>
+                            </td>
+                            <td class="py-3 text-slate-400">{{ p.email or p.phone or 'N/A' }}</td>
+                            <td class="py-3">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    {{ p.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

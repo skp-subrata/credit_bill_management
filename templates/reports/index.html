@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Reports & Analytics - Hospital Credit Billing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">System Reports & Excel Exports</h1>
+            <p class="text-xs text-slate-400 mt-1">Download enterprise reports in CSV and Excel formats across hospital units.</p>
+        </div>
+    </div>
+
+    <!-- Reports Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        <!-- 1. IP Admission Report -->
+        <div class="glass-panel p-5 space-y-3 border-t-2 border-indigo-500">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold text-slate-100">1. IP Admission Report</h2>
+                <span class="text-xs">🛏️</span>
+            </div>
+            <p class="text-xs text-slate-400">Complete inpatient admissions log with UHID, department, and doctor snapshots.</p>
+            <div class="flex gap-2 pt-2">
+                <a href="{{ url_for('reports.export_report', report_type='ip_admissions', format='csv') }}" class="btn-secondary text-[10px] py-1 px-3 flex-1 text-center">CSV Export</a>
+                <a href="{{ url_for('reports.export_report', report_type='ip_admissions', format='excel') }}" class="btn-primary text-[10px] py-1 px-3 flex-1 text-center bg-indigo-600">Excel Export</a>
+            </div>
+        </div>
+
+        <!-- 2. Discharge Report -->
+        <div class="glass-panel p-5 space-y-3 border-t-2 border-teal-500">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold text-slate-100">2. Discharge Report</h2>
+                <span class="text-xs">🚪</span>
+            </div>
+            <p class="text-xs text-slate-400">Inpatient discharge summaries, types, statuses, and final bill readiness.</p>
+            <div class="flex gap-2 pt-2">
+                <a href="{{ url_for('reports.export_report', report_type='discharges', format='csv') }}" class="btn-secondary text-[10px] py-1 px-3 flex-1 text-center">CSV Export</a>
+                <a href="{{ url_for('reports.export_report', report_type='discharges', format='excel') }}" class="btn-primary text-[10px] py-1 px-3 flex-1 text-center bg-indigo-600">Excel Export</a>
+            </div>
+        </div>
+
+        <!-- 3. OP Episode Report -->
+        <div class="glass-panel p-5 space-y-3 border-t-2 border-purple-500">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold text-slate-100">3. OP Episode Report</h2>
+                <span class="text-xs">🩺</span>
+            </div>
+            <p class="text-xs text-slate-400">Outpatient visit registrations, department breakdown, and doctor logs.</p>
+            <div class="flex gap-2 pt-2">
+                <a href="{{ url_for('reports.export_report', report_type='op_episodes', format='csv') }}" class="btn-secondary text-[10px] py-1 px-3 flex-1 text-center">CSV Export</a>
+                <a href="{{ url_for('reports.export_report', report_type='op_episodes', format='excel') }}" class="btn-primary text-[10px] py-1 px-3 flex-1 text-center bg-indigo-600">Excel Export</a>
+            </div>
+        </div>
+
+        <!-- 4. Billing & Credit Report -->
+        <div class="glass-panel p-5 space-y-3 border-t-2 border-amber-500">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold text-slate-100">4. Billing & Credit Report</h2>
+                <span class="text-xs">🧾</span>
+            </div>
+            <p class="text-xs text-slate-400">Full bill master report with encounter type, payer, amount, and workflow statuses.</p>
+            <div class="flex gap-2 pt-2">
+                <a href="{{ url_for('reports.export_report', report_type='billing', format='csv') }}" class="btn-secondary text-[10px] py-1 px-3 flex-1 text-center">CSV Export</a>
+                <a href="{{ url_for('reports.export_report', report_type='billing', format='excel') }}" class="btn-primary text-[10px] py-1 px-3 flex-1 text-center bg-indigo-600">Excel Export</a>
+            </div>
+        </div>
+
+        <!-- 5. Query & Bill Aging Report -->
+        <div class="glass-panel p-5 space-y-3 border-t-2 border-rose-500">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold text-slate-100">5. Bill Aging Breakdown Report</h2>
+                <span class="text-xs">⏱️</span>
+            </div>
+            <p class="text-xs text-slate-400">Categorized aging analysis (0–3, 4–7, 8–15, 16–30, 31–60, &gt;60 days).</p>
+            <div class="flex gap-2 pt-2">
+                <a href="{{ url_for('reports.export_report', report_type='aging', format='csv') }}" class="btn-secondary text-[10px] py-1 px-3 flex-1 text-center">CSV Export</a>
+                <a href="{{ url_for('reports.export_report', report_type='aging', format='excel') }}" class="btn-primary text-[10px] py-1 px-3 flex-1 text-center bg-indigo-600">Excel Export</a>
+            </div>
+        </div>
+
+        <!-- 6. System Audit Trail Report -->
+        <div class="glass-panel p-5 space-y-3 border-t-2 border-emerald-500">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-bold text-slate-100">6. Audit Trail Report</h2>
+                <span class="text-xs">📋</span>
+            </div>
+            <p class="text-xs text-slate-400">Complete audit log history tracking user actions, IP addresses, and timestamps.</p>
+            <div class="flex gap-2 pt-2">
+                <a href="{{ url_for('reports.export_report', report_type='audit', format='csv') }}" class="btn-secondary text-[10px] py-1 px-3 flex-1 text-center">CSV Export</a>
+                <a href="{{ url_for('reports.export_report', report_type='audit', format='excel') }}" class="btn-primary text-[10px] py-1 px-3 flex-1 text-center bg-indigo-600">Excel Export</a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+

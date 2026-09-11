@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Bill Detail & Lifecycle Timeline - {{ bill.bill_number }}{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Header Banner -->
+    <div class="glass-panel p-6 border-l-4 border-indigo-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">{{ bill.encounter_type }} {{ bill.bill_type }} BILL</span>
+                <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    STATUS: {{ bill.bill_status }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-100 mt-1">Bill #{{ bill.bill_number }}</h1>
+            <p class="text-xs text-slate-400 mt-0.5">Patient: <span class="font-bold text-slate-200">{{ bill.patient_name_snapshot }}</span> (UHID: {{ bill.patient.uhid }}) | Date: {{ bill.bill_date }}</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('billing.bills') }}" class="btn-secondary text-xs">
+                &larr; Back to Bills
+            </a>
+            {% if bill.bill_status != 'CLOSED' and session.get('role_code') in ('super_admin', 'admin') %}
+            <form method="POST" action="{{ url_for('billing.close_bill', bill_id=bill.bill_id) }}" onsubmit="return confirm('Formally close and archive this bill?');">
+                <button type="submit" class="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs">
+                    ✓ Close & Archive Bill
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Interactive Lifecycle Encounter Timeline -->
+    <div class="glass-panel p-6">
+        <h2 class="text-sm font-bold text-slate-100 mb-6 uppercase tracking-wider">Bill Lifecycle Timeline</h2>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 text-center">
+            <!-- 1. Encounter Admission -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border border-emerald-500/30">
+                <div class="text-[10px] font-bold text-emerald-400">1. Encounter</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">
+                    {% if bill.encounter_type == 'IP' %}IP: {{ bill.ip_number }}{% else %}OP Episode{% endif %}
+                </div>
+                <div class="text-[9px] text-slate-400 mt-1">Admitted</div>
+            </div>
+
+            <!-- 2. Discharge -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.discharge_id or bill.encounter_type == 'OP' %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
+                <div class="text-[10px] font-bold {% if bill.discharge_id or bill.encounter_type == 'OP' %}text-emerald-400{% else %}text-slate-500{% endif %}">2. Discharge</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">
+                    {% if bill.discharge_id %}Discharged{% elif bill.encounter_type == 'OP' %}N/A (OP){% else %}Pending{% endif %}
+                </div>
+                <div class="text-[9px] text-slate-400 mt-1">Summary Completed</div>
+            </div>
+
+            <!-- 3. Generated Bill -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border border-emerald-500/30">
+                <div class="text-[10px] font-bold text-emerald-400">3. Generated</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">${{ "%.2f"|format(bill.bill_amount) }}</div>
+                <div class="text-[9px] text-slate-400 mt-1">{{ bill.bill_date }}</div>
+            </div>
+
+            <!-- 4. Verification -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.verifications %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
+                <div class="text-[10px] font-bold {% if bill.verifications %}text-emerald-400{% else %}text-slate-500{% endif %}">4. Verified</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">
+                    {% if bill.verifications %}{{ bill.verifications[-1].verification_status }}{% else %}Pending{% endif %}
+                </div>
+                <div class="text-[9px] text-slate-400 mt-1">Internal Audit</div>
+            </div>
+
+            <!-- 5. Dispatch -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.dispatches %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
+                <div class="text-[10px] font-bold {% if bill.dispatches %}text-emerald-400{% else %}text-slate-500{% endif %}">5. Dispatched</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">
+                    {% if bill.dispatches %}{{ bill.dispatches[-1].dispatch_mode }}{% else %}Pending{% endif %}
+                </div>
+                <div class="text-[9px] text-slate-400 mt-1">Payer Submission</div>
+            </div>
+
+            <!-- 6. Payer Query -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.queries %}border-amber-500/30{% else %}border-slate-800 opacity-60{% endif %}">
+                <div class="text-[10px] font-bold {% if bill.queries %}text-amber-400{% else %}text-slate-500{% endif %}">6. Queries</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">
+                    {% if bill.queries %}{{ bill.queries|length }} Query(s){% else %}None{% endif %}
+                </div>
+                <div class="text-[9px] text-slate-400 mt-1">Payer Feedback</div>
+            </div>
+
+            <!-- 7. Payment -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.payments %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
+                <div class="text-[10px] font-bold {% if bill.payments %}text-emerald-400{% else %}text-slate-500{% endif %}">7. Payments</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">
+                    ${{ "%.2f"|format(bill.bill_amount - bill.outstanding_amount) }}
+                </div>
+                <div class="text-[9px] text-slate-400 mt-1">Due: ${{ "%.2f"|format(bill.outstanding_amount) }}</div>
+            </div>
+
+            <!-- 8. Closure -->
+            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.bill_status == 'CLOSED' %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
+                <div class="text-[10px] font-bold {% if bill.bill_status == 'CLOSED' %}text-emerald-400{% else %}text-slate-500{% endif %}">8. Closure</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">
+                    {% if bill.bill_status == 'CLOSED' %}Closed{% else %}Open{% endif %}
+                </div>
+                <div class="text-[9px] text-slate-400 mt-1">Archived</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Action Sections -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- 1. Bill Verification Module -->
+        <div class="glass-panel p-6 space-y-4">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center justify-between">
+                <span>1. Internal Bill Verification</span>
+                <span class="text-xs font-normal text-slate-400">Verifications: {{ bill.verifications|length }}</span>
+            </h2>
+
+            {% if bill.verifications %}
+            <div class="space-y-2 text-xs">
+                {% for v in bill.verifications %}
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                    <div class="flex justify-between font-bold">
+                        <span class="{% if v.verification_status == 'VERIFIED' %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                            {{ v.verification_status }}
+                        </span>
+                        <span class="text-slate-400">{{ v.verified_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <div class="text-slate-300 mt-1">Verified by User ID: #{{ v.verified_by }}</div>
+                    {% if v.verification_remarks %}<div class="text-slate-400 mt-1">Remarks: {{ v.verification_remarks }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if session.get('role_code') in ('super_admin', 'admin') %}
+            <form method="POST" action="{{ url_for('billing.verify_bill', bill_id=bill.bill_id) }}" class="space-y-3 pt-2">
+                <div>
+                    <label for="remarks" class="form-label">Verification Remarks / Notes</label>
+                    <input type="text" id="remarks" name="remarks" placeholder="Itemized bill verified against discharge summary" class="form-input">
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button type="submit" name="action" value="VERIFY" class="btn-primary bg-emerald-600 hover:bg-emerald-700 flex-1">
+                        ✓ Approve & Verify Bill
+                    </button>
+                    <button type="submit" name="action" value="REJECT" class="btn-secondary text-rose-400 hover:bg-rose-600/20 flex-1">
+                        ✕ Reject for Rework
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- 2. Dispatch Tracker Module -->
+        <div class="glass-panel p-6 space-y-4">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center justify-between">
+                <span>2. Dispatch Tracker</span>
+                <span class="text-xs font-normal text-slate-400">Dispatches: {{ bill.dispatches|length }}</span>
+            </h2>
+
+            {% if bill.dispatches %}
+            <div class="space-y-2 text-xs">
+                {% for d in bill.dispatches %}
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                    <div class="flex justify-between font-bold">
+                        <span class="text-sky-400">{{ d.dispatch_mode }}</span>
+                        <span class="text-slate-400">{{ d.dispatch_date }}</span>
+                    </div>
+                    <div class="text-slate-300 mt-1">Courier: {{ d.courier_name or 'N/A' }} | Tracking: <span class="font-mono text-indigo-400">{{ d.tracking_number or 'N/A' }}</span></div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('billing.dispatch_bill', bill_id=bill.bill_id) }}" class="space-y-3 pt-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="dispatch_date" class="form-label">Dispatch Date</label>
+                        <input type="date" id="dispatch_date" name="dispatch_date" required class="form-input">
+                    </div>
+                    <div>
+                        <label for="dispatch_mode" class="form-label">Dispatch Mode</label>
+                        <select id="dispatch_mode" name="dispatch_mode" class="form-input">
+                            <option value="COURIER">COURIER</option>
+                            <option value="EMAIL">EMAIL</option>
+                            <option value="HAND_DELIVERY">HAND DELIVERY</option>
+                            <option value="PORTAL">PORTAL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="courier_name" class="form-label">Courier Name</label>
+                        <input type="text" id="courier_name" name="courier_name" placeholder="FedEx / DHL" class="form-input">
+                    </div>
+                    <div>
+                        <label for="tracking_number" class="form-label">Tracking Number</label>
+                        <input type="text" id="tracking_number" name="tracking_number" placeholder="TRK-900234" class="form-input">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2 bg-sky-600 hover:bg-sky-700">
+                    Record Dispatch Entry
+                </button>
+            </form>
+        </div>
+
+        <!-- 3. Payer Query Management -->
+        <div class="glass-panel p-6 space-y-4">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center justify-between">
+                <span>3. Payer Queries & Responses</span>
+                <span class="text-xs font-normal text-slate-400">Queries: {{ bill.queries|length }}</span>
+            </h2>
+
+            {% if bill.queries %}
+            <div class="space-y-3 text-xs">
+                {% for q in bill.queries %}
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
+                    <div class="flex justify-between font-bold">
+                        <span class="text-amber-400">{{ q.query_code }} ({{ q.query_status }})</span>
+                        <span class="text-slate-400">{{ q.query_date }}</span>
+                    </div>
+                    <div class="text-slate-300">{{ q.query_description }}</div>
+
+                    {% if q.query_status != 'CLOSED' and q.query_status != 'RESOLVED' %}
+                    <form method="POST" action="{{ url_for('billing.respond_query', query_id=q.query_id) }}" class="pt-2 flex gap-2">
+                        <input type="text" name="response_remarks" required placeholder="Response remarks..." class="form-input">
+                        <button type="submit" class="btn-secondary py-1 px-3">Submit Response</button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('billing.raise_query', bill_id=bill.bill_id) }}" class="space-y-3 pt-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="query_date" class="form-label">Query Date</label>
+                        <input type="date" id="query_date" name="query_date" required class="form-input">
+                    </div>
+                    <div>
+                        <label for="query_type" class="form-label">Query Type</label>
+                        <select id="query_type" name="query_type" class="form-input">
+                            <option value="DOCUMENTATION">DOCUMENTATION</option>
+                            <option value="TARIFF_DISCREPANCY">TARIFF DISCREPANCY</option>
+                            <option value="APPROVAL_LIMIT">APPROVAL LIMIT</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="query_description" class="form-label">Query Description from Payer</label>
+                    <input type="text" id="query_description" name="query_description" required placeholder="Payer requested missing diagnostic reports" class="form-input">
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2 bg-amber-600 hover:bg-amber-700">
+                    Raise Payer Query Entry
+                </button>
+            </form>
+        </div>
+
+        <!-- 4. Payments & UTR Entry -->
+        <div class="glass-panel p-6 space-y-4">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center justify-between">
+                <span>4. Payment & UTR Settlement</span>
+                <span class="text-xs font-normal text-slate-400">Payments: {{ bill.payments|length }}</span>
+            </h2>
+
+            {% if bill.payments %}
+            <div class="space-y-2 text-xs">
+                {% for p in bill.payments %}
+                <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                    <div class="flex justify-between font-bold">
+                        <span class="text-emerald-400">Received: ${{ "%.2f"|format(p.amount_received) }}</span>
+                        <span class="text-slate-400">UTR: {{ p.utr_number }}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-1">Date: {{ p.payment_date }} | Mode: {{ p.payment_mode }}</div>
+                    {% if p.short_fall_amount > 0 %}
+                    <div class="text-[10px] text-rose-400 mt-1">Shortfall / Disallowance: ${{ "%.2f"|format(p.short_fall_amount) }} ({{ p.disallowance_reason }})</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('billing.record_payment', bill_id=bill.bill_id) }}" class="space-y-3 pt-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="payment_date" class="form-label">Payment Date</label>
+                        <input type="date" id="payment_date" name="payment_date" required class="form-input">
+                    </div>
+                    <div>
+                        <label for="utr_number" class="form-label">UTR / Cheque No</label>
+                        <input type="text" id="utr_number" name="utr_number" required placeholder="UTR-9908234" class="form-input">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label for="amount_received" class="form-label">Amount Received ($)</label>
+                        <input type="number" step="0.01" id="amount_received" name="amount_received" required value="{{ bill.outstanding_amount }}" class="form-input">
+                    </div>
+                    <div>
+                        <label for="short_fall_amount" class="form-label">Shortfall / Disallowance ($)</label>
+                        <input type="number" step="0.01" id="short_fall_amount" name="short_fall_amount" value="0.00" class="form-input">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="disallowance_reason" class="form-label">Disallowance Reason (If any)</label>
+                    <input type="text" id="disallowance_reason" name="disallowance_reason" placeholder="Deductions per tariff schedule" class="form-input">
+                </div>
+
+                <button type="submit" class="btn-primary w-full py-2 bg-emerald-600 hover:bg-emerald-700">
+                    Record UTR Payment Entry
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+

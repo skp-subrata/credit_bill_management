@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.db
+*.sqlite
+*.sqlite3
 .env
 .pytest_cache/
 .vscode/
