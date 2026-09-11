@@ -82,8 +82,33 @@ def process_sync_batch(batch_id, user_id=None):
                         if hp:
                             hospital_payer_id = hp.hospital_payer_id
 
-                # 3. Doctor Resolution
+                # 3. Doctor Resolution & Master Upsert
                 doctor_name = treatingdoctor or primarydoctor or 'Staff Doctor'
+                if doctor_name and doctor_name != 'Staff Doctor':
+                    norm_doc = normalize_string(doctor_name)
+                    doc_obj = DoctorMaster.query.filter_by(normalized_doctor_name=norm_doc).first()
+                    if not doc_obj:
+                        dept = normalize_string(row.admiting_doctor_dept or row.treating_doctor_dept or row.specializationdesc) or 'General'
+                        spec = normalize_string(row.specializationdesc or row.specialization) or 'General'
+                        doc_obj = DoctorMaster(
+                            doctor_code=f"DOC-{(hash(norm_doc) & 0xffff):04d}",
+                            doctor_name=doctor_name,
+                            normalized_doctor_name=norm_doc,
+                            department=dept,
+                            specialization=spec,
+                            unit_id=unit.unit_id if unit else None
+                        )
+                        db.session.add(doc_obj)
+                        db.session.flush()
+
+                    doc_map = HISDoctorMapping.query.filter_by(normalized_doctor_name=norm_doc).first()
+                    if not doc_map:
+                        doc_map = HISDoctorMapping(
+                            source_doctor_name=doctor_name,
+                            normalized_doctor_name=norm_doc,
+                            doctor_id=doc_obj.doctor_id
+                        )
+                        db.session.add(doc_map)
 
                 # 4. IP Admission Upsert (LOCATIONID + IPNUMBER)
                 admitted_date, admitted_time = parse_datetime_safe(row.admitteddate)

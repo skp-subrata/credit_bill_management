@@ -1,4 +1,6 @@
 import json
+import io
+import csv
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, Response
 from database import db
@@ -24,6 +26,7 @@ def upload():
     if request.method == 'POST':
         source_system = request.form.get('source_system', 'HIS_EXCEL')
         sync_mode = request.form.get('sync_mode', 'INCREMENTAL_SYNC')
+        auto_sync = request.form.get('auto_sync') == 'on'
         remarks = request.form.get('remarks', '').strip()
 
         file_obj = request.files.get('file')
@@ -112,12 +115,121 @@ def upload():
         # Run Staging Validation Engine
         validate_staging_batch(batch.batch_id)
 
-        log_audit('UPLOAD_HIS_FILE', 'SyncBatch', batch.batch_id, None, {'file_name': file_obj.filename, 'total_rows': len(parsed_rows)})
-        flash(f"File '{file_obj.filename}' staged & validated! Batch #{batch.batch_id} ({len(parsed_rows)} records).", 'success')
+        # Auto Sync Option Execution
+        if auto_sync:
+            process_sync_batch(batch.batch_id, user_id=session.get('user_id'))
+            flash(f"File '{file_obj.filename}' staged, validated & automatically synced! Batch #{batch.batch_id} ({len(parsed_rows)} records processed).", 'success')
+        else:
+            flash(f"File '{file_obj.filename}' staged & validated! Batch #{batch.batch_id} ({len(parsed_rows)} records). Click 'Execute Sync Engine' to sync into target tables.", 'success')
+
+        log_audit('UPLOAD_HIS_FILE', 'SyncBatch', batch.batch_id, None, {'file_name': file_obj.filename, 'total_rows': len(parsed_rows), 'auto_sync': auto_sync})
         return redirect(url_for('his_sync.batch_detail', batch_id=batch.batch_id))
 
     units = HospitalUnit.query.filter_by(status='ACTIVE').all()
     return render_template('his_sync/upload.html', units=units)
+
+# --- SAMPLE FILE GENERATOR & DOWNLOAD ROUTE ---
+@his_sync_bp.route('/download-sample', defaults={'fmt': 'xlsx'})
+@his_sync_bp.route('/download-sample/<fmt>')
+@login_required
+def download_sample(fmt):
+    headers = [
+        'UHID', 'PATIENTNAME', 'IPNUMBER', 'GENDER', 'AGE',
+        'ADMITTEDDATE', 'PLANINGDATE', 'CLOSINGDATE', 'PRIMARYDOCTOR', 'NURSECHECKEDOUTTIME',
+        'ADMITING_DOCTOR', 'ADMITING_DOCTOR_DEPT', 'TREATING_DOCTOR', 'TREATING_DOCTOR_DEPT',
+        'INTERIMDATE', 'DISCHARGE_BILLDATE', 'BED_OCCUPIED', 'SPECIALIZATION', 'SPECIALIZATIONDESC',
+        'BEDNO', 'BEDTYPE', 'BILLABLEBED', 'BEDNUMBER', 'WARDNAME',
+        'COMPANYNAME', 'REFRALDOCTOR', 'CURRENTSTATUS', 'REASONANDREMARKS', 'CONTACTNO',
+        'ADDRESS1', 'COUNTRYNAME', 'STATENAME', 'CITYNAME', 'DISTRICTNAME',
+        'CREATEDBY', 'LOCATIONID'
+    ]
+
+    unit = HospitalUnit.query.filter_by(status='ACTIVE').first()
+    loc_id = unit.unit_code if unit else 'MH-BLR-01'
+
+    sample_rows = [
+        {
+            'UHID': 'UHID-2026-101', 'PATIENTNAME': 'SUPRITI SWAIN', 'IPNUMBER': 'IP-2026-001',
+            'GENDER': 'Female', 'AGE': '34 Yrs', 'ADMITTEDDATE': '01.09.2026 10:30',
+            'PLANINGDATE': '04.09.2026 12:00', 'CLOSINGDATE': '04.09.2026 15:50',
+            'PRIMARYDOCTOR': 'Dr. Rajesh Sharma', 'NURSECHECKEDOUTTIME': '04.09.2026 15:00',
+            'ADMITING_DOCTOR': 'Dr. Rajesh Sharma', 'ADMITING_DOCTOR_DEPT': 'Cardiology',
+            'TREATING_DOCTOR': 'Dr. Rajesh Sharma', 'TREATING_DOCTOR_DEPT': 'Cardiology',
+            'INTERIMDATE': '', 'DISCHARGE_BILLDATE': '04.09.2026 15:30', 'BED_OCCUPIED': 'Bed-102',
+            'SPECIALIZATION': 'CARD', 'SPECIALIZATIONDESC': 'Cardiology', 'BEDNO': '102',
+            'BEDTYPE': 'Deluxe', 'BILLABLEBED': 'Deluxe', 'BEDNUMBER': '102', 'WARDNAME': 'Cardiac ICU',
+            'COMPANYNAME': 'Star Health & Allied Insurance', 'REFRALDOCTOR': 'Dr. Mehta',
+            'CURRENTSTATUS': 'DISCHARGED', 'REASONANDREMARKS': 'Routine discharge post recovery',
+            'CONTACTNO': '9876543210', 'ADDRESS1': '124 MG Road', 'COUNTRYNAME': 'India',
+            'STATENAME': 'Karnataka', 'CITYNAME': 'Bangalore', 'DISTRICTNAME': 'Bangalore Urban',
+            'CREATEDBY': 'HIS_ADMIN', 'LOCATIONID': loc_id
+        },
+        {
+            'UHID': 'UHID-2026-102', 'PATIENTNAME': 'AMIT KUMAR', 'IPNUMBER': 'IP-2026-002',
+            'GENDER': 'Male', 'AGE': '45 Yrs', 'ADMITTEDDATE': '05.09.2026 14:15',
+            'PLANINGDATE': '', 'CLOSINGDATE': '', 'PRIMARYDOCTOR': 'Dr. Anita Verma',
+            'NURSECHECKEDOUTTIME': '', 'ADMITING_DOCTOR': 'Dr. Anita Verma',
+            'ADMITING_DOCTOR_DEPT': 'Neurology', 'TREATING_DOCTOR': 'Dr. Anita Verma',
+            'TREATING_DOCTOR_DEPT': 'Neurology', 'INTERIMDATE': '', 'DISCHARGE_BILLDATE': '',
+            'BED_OCCUPIED': 'Bed-204', 'SPECIALIZATION': 'NEURO', 'SPECIALIZATIONDESC': 'Neurology',
+            'BEDNO': '204', 'BEDTYPE': 'Semi-Private', 'BILLABLEBED': 'Semi-Private',
+            'BEDNUMBER': '204', 'WARDNAME': 'Neuro Ward', 'COMPANYNAME': 'Star Health & Allied Insurance',
+            'REFRALDOCTOR': '', 'CURRENTSTATUS': 'ADMITTED', 'REASONANDREMARKS': 'Under observation',
+            'CONTACTNO': '9123456789', 'ADDRESS1': '56 Indiranagar', 'COUNTRYNAME': 'India',
+            'STATENAME': 'Karnataka', 'CITYNAME': 'Bangalore', 'DISTRICTNAME': 'Bangalore Urban',
+            'CREATEDBY': 'HIS_ADMIN', 'LOCATIONID': loc_id
+        },
+        {
+            'UHID': 'UHID-2026-103', 'PATIENTNAME': 'PRIYA SHARMA', 'IPNUMBER': 'IP-2026-003',
+            'GENDER': 'Female', 'AGE': '28 Yrs', 'ADMITTEDDATE': '06.09.2026 09:00',
+            'PLANINGDATE': '08.09.2026 11:00', 'CLOSINGDATE': '08.09.2026 14:00',
+            'PRIMARYDOCTOR': 'Dr. Suresh Menon', 'NURSECHECKEDOUTTIME': '08.09.2026 13:30',
+            'ADMITING_DOCTOR': 'Dr. Suresh Menon', 'ADMITING_DOCTOR_DEPT': 'Orthopedics',
+            'TREATING_DOCTOR': 'Dr. Suresh Menon', 'TREATING_DOCTOR_DEPT': 'Orthopedics',
+            'INTERIMDATE': '', 'DISCHARGE_BILLDATE': '08.09.2026 14:00', 'BED_OCCUPIED': 'Bed-301',
+            'SPECIALIZATION': 'ORTHO', 'SPECIALIZATIONDESC': 'Orthopedics', 'BEDNO': '301',
+            'BEDTYPE': 'General Ward', 'BILLABLEBED': 'General Ward', 'BEDNUMBER': '301',
+            'WARDNAME': 'Ortho Ward', 'COMPANYNAME': 'CASH', 'REFRALDOCTOR': '',
+            'CURRENTSTATUS': 'DISCHARGED', 'REASONANDREMARKS': 'Fracture treatment complete',
+            'CONTACTNO': '9988776655', 'ADDRESS1': '88 Koramangala', 'COUNTRYNAME': 'India',
+            'STATENAME': 'Karnataka', 'CITYNAME': 'Bangalore', 'DISTRICTNAME': 'Bangalore Urban',
+            'CREATEDBY': 'HIS_ADMIN', 'LOCATIONID': loc_id
+        }
+    ]
+
+    if fmt == 'xlsx':
+        try:
+            import openpyxl
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "HIS_IP_Import"
+            ws.append(headers)
+            for r in sample_rows:
+                ws.append([r.get(h, '') for h in headers])
+
+            output = io.BytesIO()
+            wb.save(output)
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                headers={'Content-Disposition': 'attachment; filename="sample_his_ip_import.xlsx"'}
+            )
+        except Exception:
+            pass
+
+    # Fallback / CSV format
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=headers)
+    writer.writeheader()
+    for r in sample_rows:
+        writer.writerow(r)
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename="sample_his_ip_import.csv"'}
+    )
 
 # --- 2. BATCH DETAIL & CONFIRM SYNC ---
 @his_sync_bp.route('/batches/<int:batch_id>')
