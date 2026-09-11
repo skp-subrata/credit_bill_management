@@ -180,7 +180,8 @@
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label for="dispatch_date" class="form-label">Dispatch Date</label>
-                        <input type="date" id="dispatch_date" name="dispatch_date" required class="form-input">
+                        <input type="date" id="dispatch_date" name="dispatch_date" required min="{{ min_dispatch_date }}" max="{{ max_dispatch_date }}" value="{{ max_dispatch_date }}" class="form-input">
+                        <p class="text-[10px] text-slate-400 mt-1">Allowed: <span class="font-mono font-bold text-sky-400">{{ min_dispatch_date }}</span> to <span class="font-mono font-bold text-emerald-400">{{ max_dispatch_date }}</span> (Today - 3d)</p>
                     </div>
                     <div>
                         <label for="dispatch_mode" class="form-label">Dispatch Mode</label>

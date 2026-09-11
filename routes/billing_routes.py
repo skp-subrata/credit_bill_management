@@ -8,7 +8,7 @@ from models import (
 from utils.auth import login_required, permission_required, get_current_user
 from utils.audit import log_audit
 
-from utils.tat import calculate_tat_metrics
+from utils.tat import calculate_tat_metrics, get_dispatch_date_bounds, validate_dispatch_date
 
 billing_bp = Blueprint('billing', __name__, url_prefix='/billing')
 
@@ -130,7 +130,8 @@ def bill_detail(bill_id):
         tat_days = bill.hospital_payer.submission_tat_days
         monthly_sub = bill.hospital_payer.monthly_submission
     tat_info = calculate_tat_metrics(bill.bill_date, submission_tat_days=tat_days, monthly_submission=monthly_sub)
-    return render_template('billing/bill_detail.html', bill=bill, tat_info=tat_info)
+    min_dispatch_date, max_dispatch_date = get_dispatch_date_bounds()
+    return render_template('billing/bill_detail.html', bill=bill, tat_info=tat_info, min_dispatch_date=min_dispatch_date, max_dispatch_date=max_dispatch_date)
 
 # --- BILL VERIFICATION ---
 @billing_bp.route('/bills/<int:bill_id>/verify', methods=['POST'])
@@ -172,6 +173,13 @@ def verify_bill(bill_id):
 def dispatch_bill(bill_id):
     bill = Bill.query.get_or_404(bill_id)
     dispatch_date = request.form.get('dispatch_date')
+
+    # Enforce Dispatch Date restriction (Today - 3 days to Today)
+    is_valid, error_msg = validate_dispatch_date(dispatch_date)
+    if not is_valid:
+        flash(error_msg, 'error')
+        return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
+
     dispatch_mode = request.form.get('dispatch_mode', 'COURIER')
     courier_name = request.form.get('courier_name', '')
     tracking_number = request.form.get('tracking_number', '')

@@ -69,3 +69,52 @@ def calculate_tat_metrics(bill_date_input, submission_tat_days=15, monthly_submi
         "days_remaining": days_remaining,
         "sla_status": sla_status
     }
+
+def get_dispatch_date_bounds(ref_date=None):
+    """
+    Returns (min_date_str, max_date_str) in YYYY-MM-DD format.
+    Rule: Minimum Dispatch Date = Today - 3 days, Maximum Dispatch Date = Today.
+    """
+    if ref_date is None:
+        ref_d = datetime.now().date()
+    elif isinstance(ref_date, datetime):
+        ref_d = ref_date.date()
+    else:
+        ref_d = ref_date
+        
+    min_d = ref_d - timedelta(days=3)
+    max_d = ref_d
+    return min_d.strftime('%Y-%m-%d'), max_d.strftime('%Y-%m-%d')
+
+def validate_dispatch_date(dispatch_date_input, ref_date=None):
+    """
+    Validates if dispatch_date is within [Today - 3 days, Today].
+    Returns (is_valid, error_message).
+    """
+    if not dispatch_date_input:
+        return False, "Dispatch Date is required."
+        
+    d_obj = parse_date_safe(dispatch_date_input)
+    if not d_obj:
+        return False, f"Invalid date format for Dispatch Date: '{dispatch_date_input}'."
+        
+    dispatch_d = d_obj.date()
+    
+    if ref_date is None:
+        ref_d = datetime.now().date()
+    elif isinstance(ref_date, datetime):
+        ref_d = ref_date.date()
+    else:
+        ref_d = ref_date
+
+    min_d = ref_d - timedelta(days=3)
+    max_d = ref_d
+
+    if dispatch_d < min_d:
+        return False, f"Dispatch Date '{dispatch_d.strftime('%Y-%m-%d')}' is invalid. Minimum allowed date is '{min_d.strftime('%Y-%m-%d')}' (Today - 3 days)."
+    if dispatch_d > max_d:
+        return False, f"Dispatch Date '{dispatch_d.strftime('%Y-%m-%d')}' cannot be in the future. Maximum allowed date is '{max_d.strftime('%Y-%m-%d')}' (Today)."
+        
+    return True, None
+
+
