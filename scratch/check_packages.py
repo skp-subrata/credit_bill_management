@@ -5,3 +5,4 @@ for p in pkgs:
         print(f"{p}: INSTALLED ({getattr(mod, '__file__', 'builtin')})")
     except Exception as e:
         print(f"{p}: NOT INSTALLED ({e})")
+

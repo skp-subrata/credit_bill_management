@@ -68,10 +68,18 @@ with app.app_context():
     db.create_all()
     try:
         with db.engine.connect() as conn:
+            # Check ip_admissions
             col_rows = conn.execute(db.text("PRAGMA table_info(ip_admissions)")).fetchall()
             columns = [r[1] for r in col_rows] if col_rows else []
             if columns and 'billing_eligible' not in columns:
                 conn.execute(db.text("ALTER TABLE ip_admissions ADD COLUMN billing_eligible BOOLEAN DEFAULT 0"))
+                conn.commit()
+
+            # Check hospital_payers
+            hp_col_rows = conn.execute(db.text("PRAGMA table_info(hospital_payers)")).fetchall()
+            hp_columns = [r[1] for r in hp_col_rows] if hp_col_rows else []
+            if hp_columns and 'monthly_submission' not in hp_columns:
+                conn.execute(db.text("ALTER TABLE hospital_payers ADD COLUMN monthly_submission BOOLEAN DEFAULT 0"))
                 conn.commit()
     except Exception:
         pass

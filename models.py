@@ -114,6 +114,7 @@ class HospitalPayer(db.Model):
     billing_type = db.Column(db.String(50), default='CREDIT')
     credit_allowed = db.Column(db.Boolean, default=True)
     submission_tat_days = db.Column(db.Integer, default=15)
+    monthly_submission = db.Column(db.Boolean, default=False)
     document_requirement = db.Column(db.Text, default='')
     approval_required = db.Column(db.Boolean, default=True)
     dispatch_mode = db.Column(db.String(50), default='COURIER')

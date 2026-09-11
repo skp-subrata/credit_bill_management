@@ -56,7 +56,7 @@
                     </select>
                 </div>
 
-                <div class="flex items-center gap-4 py-1">
+                <div class="flex flex-wrap items-center gap-4 py-1">
                     <label class="flex items-center gap-2 text-xs font-semibold text-slate-300">
                         <input type="checkbox" name="credit_allowed" checked class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0">
                         Credit Allowed
@@ -65,6 +65,11 @@
                     <label class="flex items-center gap-2 text-xs font-semibold text-slate-300">
                         <input type="checkbox" name="approval_required" checked class="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0">
                         Pre-Approval Req.
+                    </label>
+
+                    <label class="flex items-center gap-2 text-xs font-bold text-amber-400">
+                        <input type="checkbox" name="monthly_submission" class="rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-0">
+                        Monthly Submission (1st of Next Month)
                     </label>
                 </div>
 
@@ -90,6 +95,7 @@
                             <th class="pb-3">Unit</th>
                             <th class="pb-3">Payer Name</th>
                             <th class="pb-3">TAT Days</th>
+                            <th class="pb-3">Monthly Sub.</th>
                             <th class="pb-3">Dispatch Mode</th>
                             <th class="pb-3">Pre-Approval</th>
                         </tr>
@@ -100,6 +106,13 @@
                             <td class="py-3 font-bold text-slate-200">{{ hp.hospital_unit.unit_code }}</td>
                             <td class="py-3 font-medium text-indigo-400">{{ hp.payer.payer_name }}</td>
                             <td class="py-3 text-amber-400 font-bold">{{ hp.submission_tat_days }} Days</td>
+                            <td class="py-3">
+                                {% if hp.monthly_submission %}
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Yes (Monthly)</span>
+                                {% else %}
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/20">No (Daily)</span>
+                                {% endif %}
+                            </td>
                             <td class="py-3 text-slate-400">{{ hp.dispatch_mode }}</td>
                             <td class="py-3">
                                 {% if hp.approval_required %}

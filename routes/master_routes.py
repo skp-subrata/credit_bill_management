@@ -136,13 +136,23 @@ def hospital_payers():
         billing_type = request.form.get('billing_type', 'CREDIT')
         credit_allowed = request.form.get('credit_allowed') == 'on'
         submission_tat_days = int(request.form.get('submission_tat_days', 15))
+        monthly_submission = request.form.get('monthly_submission') == 'on'
         document_requirement = request.form.get('document_requirement', '').strip()
         approval_required = request.form.get('approval_required') == 'on'
         dispatch_mode = request.form.get('dispatch_mode', 'COURIER')
 
         existing = HospitalPayer.query.filter_by(unit_id=unit_id, payer_id=payer_id).first()
         if existing:
-            flash("Configuration for this Payer & Hospital Unit already exists.", 'error')
+            existing.payer_code_at_unit = payer_code_at_unit
+            existing.billing_type = billing_type
+            existing.credit_allowed = credit_allowed
+            existing.submission_tat_days = submission_tat_days
+            existing.monthly_submission = monthly_submission
+            existing.document_requirement = document_requirement
+            existing.approval_required = approval_required
+            existing.dispatch_mode = dispatch_mode
+            db.session.commit()
+            flash("Updated existing Hospital-Payer Configuration successfully!", 'success')
             return redirect(url_for('masters.hospital_payers'))
 
         hp = HospitalPayer(
@@ -152,6 +162,7 @@ def hospital_payers():
             billing_type=billing_type,
             credit_allowed=credit_allowed,
             submission_tat_days=submission_tat_days,
+            monthly_submission=monthly_submission,
             document_requirement=document_requirement,
             approval_required=approval_required,
             dispatch_mode=dispatch_mode

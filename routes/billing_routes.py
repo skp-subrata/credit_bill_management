@@ -8,6 +8,8 @@ from models import (
 from utils.auth import login_required, permission_required, get_current_user
 from utils.audit import log_audit
 
+from utils.tat import calculate_tat_metrics
+
 billing_bp = Blueprint('billing', __name__, url_prefix='/billing')
 
 # --- BILLS QUEUE & GENERATION ---
@@ -65,14 +67,12 @@ def bills():
                 flash('Please select an OP Episode for OP bill generation.', 'error')
                 return redirect(url_for('billing.bills'))
             episode = OPEpisode.query.get_or_404(int(episode_id_val))
-
             patient_id = episode.patient_id
             patient_name_snapshot = episode.patient_name_snapshot
             episode_id = episode.episode_id
             
             if bill_type == 'CREDIT':
                 payer_id = episode.payer_id
-                hospital_payer_id = episode.hospital_payer_id
 
         if bill_type == 'CREDIT' and not payer_id:
             flash('Credit Bills must have a valid Payer configured.', 'error')
@@ -81,12 +81,11 @@ def bills():
         bill = Bill(
             bill_number=bill_number,
             unit_id=unit_id,
+            encounter_type=encounter_type,
+            bill_type=bill_type,
             patient_id=patient_id,
             patient_name_snapshot=patient_name_snapshot,
-            bill_type=bill_type,
-            encounter_type=encounter_type,
             ip_number=ip_number,
-            episode_id=episode_id,
             admission_id=admission_id,
             discharge_id=discharge_id,
             payer_id=payer_id,
@@ -110,6 +109,13 @@ def bills():
     op_episodes_ready = OPEpisode.query.filter_by(unit_id=unit_id).all()
 
     bills_list = Bill.query.filter_by(unit_id=unit_id).order_by(Bill.bill_id.desc()).all()
+    for b in bills_list:
+        tat_days = 15
+        monthly_sub = False
+        if b.hospital_payer:
+            tat_days = b.hospital_payer.submission_tat_days
+            monthly_sub = b.hospital_payer.monthly_submission
+        b.tat_info = calculate_tat_metrics(b.bill_date, submission_tat_days=tat_days, monthly_submission=monthly_sub)
 
     return render_template('billing/bills.html', bills=bills_list, ip_admissions=ip_admissions_ready, op_episodes=op_episodes_ready)
 
@@ -118,7 +124,13 @@ def bills():
 @login_required
 def bill_detail(bill_id):
     bill = Bill.query.get_or_404(bill_id)
-    return render_template('billing/bill_detail.html', bill=bill)
+    tat_days = 15
+    monthly_sub = False
+    if bill.hospital_payer:
+        tat_days = bill.hospital_payer.submission_tat_days
+        monthly_sub = bill.hospital_payer.monthly_submission
+    tat_info = calculate_tat_metrics(bill.bill_date, submission_tat_days=tat_days, monthly_submission=monthly_sub)
+    return render_template('billing/bill_detail.html', bill=bill, tat_info=tat_info)
 
 # --- BILL VERIFICATION ---
 @billing_bp.route('/bills/<int:bill_id>/verify', methods=['POST'])
