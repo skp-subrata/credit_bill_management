@@ -110,12 +110,14 @@ def bills():
 
     bills_list = Bill.query.filter_by(unit_id=unit_id).order_by(Bill.bill_id.desc()).all()
     for b in bills_list:
+        b.update_lifecycle_status()
         tat_days = 15
         monthly_sub = False
         if b.hospital_payer:
             tat_days = b.hospital_payer.submission_tat_days
             monthly_sub = b.hospital_payer.monthly_submission
         b.tat_info = calculate_tat_metrics(b.bill_date, submission_tat_days=tat_days, monthly_submission=monthly_sub)
+    db.session.commit()
 
     return render_template('billing/bills.html', bills=bills_list, ip_admissions=ip_admissions_ready, op_episodes=op_episodes_ready)
 
@@ -124,6 +126,9 @@ def bills():
 @login_required
 def bill_detail(bill_id):
     bill = Bill.query.get_or_404(bill_id)
+    bill.update_lifecycle_status()
+    db.session.commit()
+
     tat_days = 15
     monthly_sub = False
     if bill.hospital_payer:
@@ -153,15 +158,14 @@ def verify_bill(bill_id):
         rejection_reason=rejection_reason
     )
 
+    db.session.add(verification)
+    bill.update_lifecycle_status()
+    db.session.commit()
+
     if action == 'VERIFY':
-        bill.bill_status = 'VERIFIED'
         flash(f"Bill '{bill.bill_number}' verified and approved for dispatch!", 'success')
     else:
-        bill.bill_status = 'VERIFICATION_PENDING'
         flash(f"Bill '{bill.bill_number}' rejected for rework.", 'error')
-
-    db.session.add(verification)
-    db.session.commit()
 
     log_audit('VERIFY_BILL', 'Bill', bill.bill_id, None, {'status': verification_status})
     return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
@@ -201,9 +205,8 @@ def dispatch_bill(bill_id):
         remarks=remarks
     )
 
-    bill.bill_status = 'DISPATCHED'
-
     db.session.add(dispatch)
+    bill.update_lifecycle_status()
     db.session.commit()
 
     log_audit('DISPATCH_BILL', 'BillDispatch', dispatch.dispatch_id, None, {'bill_number': bill.bill_number, 'mode': dispatch_mode})
@@ -236,6 +239,7 @@ def raise_query(bill_id):
     )
 
     db.session.add(query)
+    bill.update_lifecycle_status()
     db.session.commit()
 
     log_audit('RAISE_PAYER_QUERY', 'BillQuery', query.query_id, None, {'query_code': query_code})
@@ -255,6 +259,7 @@ def respond_query(query_id):
     query.responded_at = datetime.utcnow()
     query.responded_by = session.get('user_id')
 
+    query.bill.update_lifecycle_status()
     db.session.commit()
 
     log_audit('RESPOND_PAYER_QUERY', 'BillQuery', query.query_id, None, {'status': query_status})
@@ -292,12 +297,9 @@ def record_payment(bill_id):
 
     # Update bill outstanding balance
     bill.outstanding_amount = max(0.0, bill.outstanding_amount - amount_received)
-    if bill.outstanding_amount == 0:
-        bill.bill_status = 'PAID'
-    else:
-        bill.bill_status = 'PARTIALLY_PAID'
-
     db.session.add(payment)
+
+    bill.update_lifecycle_status()
     db.session.commit()
 
     log_audit('RECORD_BILL_PAYMENT', 'BillPayment', payment.payment_id, None, {'utr': utr_number, 'amount': amount_received})

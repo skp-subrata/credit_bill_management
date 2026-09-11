@@ -224,6 +224,56 @@ class Bill(db.Model):
     queries = db.relationship('BillQuery', backref='bill', lazy=True, cascade='all, delete-orphan')
     payments = db.relationship('BillPayment', backref='bill', lazy=True, cascade='all, delete-orphan')
 
+    def calculate_lifecycle_status(self):
+        """
+        Derives the Bill Status from the defined Billing Lifecycle stage hierarchy,
+        rather than relying on out-of-sequence activity logs.
+
+        Hierarchy of Lifecycle Stages (Lowest to Highest):
+        1. GENERATED (Base stage when bill is created)
+        2. VERIFICATION_PENDING / VERIFIED (Internal audit stage)
+        3. DISPATCHED (Payer submission completed)
+        4. QUERIED (Active open query with Payer)
+        5. PARTIALLY_PAID (Partial settlement received)
+        6. PAID (Full payment settled)
+        7. CLOSED (Formally closed/archived)
+        """
+        if self.bill_status == 'CLOSED':
+            return 'CLOSED'
+
+        # Stage 6: PAID (full settlement)
+        if self.payments and len(self.payments) > 0 and self.outstanding_amount <= 0:
+            return 'PAID'
+
+        # Stage 5: PARTIALLY_PAID (partial settlement)
+        if self.payments and len(self.payments) > 0 and self.outstanding_amount < self.bill_amount:
+            return 'PARTIALLY_PAID'
+
+        # Stage 4: QUERIED (active open query with payer)
+        has_open_query = any(q.query_status in ('OPEN', 'PENDING') for q in (self.queries or []))
+        if has_open_query:
+            return 'QUERIED'
+
+        # Stage 3: DISPATCHED (submitted to payer)
+        if self.dispatches and len(self.dispatches) > 0:
+            return 'DISPATCHED'
+
+        # Stage 2: VERIFIED (internal audit approved)
+        has_approved_verification = any(v.verification_status == 'VERIFIED' for v in (self.verifications or []))
+        if has_approved_verification:
+            return 'VERIFIED'
+
+        has_rejected_verification = any(v.verification_status == 'REJECTED' for v in (self.verifications or []))
+        if has_rejected_verification:
+            return 'VERIFICATION_PENDING'
+
+        return 'GENERATED'
+
+    def update_lifecycle_status(self):
+        """Updates and persists self.bill_status based on the highest completed lifecycle stage."""
+        self.bill_status = self.calculate_lifecycle_status()
+        return self.bill_status
+
 class BillVerification(db.Model):
     __tablename__ = 'bill_verifications'
     verification_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
