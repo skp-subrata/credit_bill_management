@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Sync History - HIS Data Sync{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">HIS Sync History Log</h1>
+            <p class="text-xs text-slate-400 mt-1">Audit log of all uploaded HIS data batches, validation statuses, and sync results.</p>
+        </div>
+
+        <a href="{{ url_for('his_sync.upload') }}" class="btn-primary text-xs">
+            + Upload New File
+        </a>
+    </div>
+
+    <!-- History Table -->
+    <div class="glass-panel p-6">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                        <th class="pb-3">Batch ID</th>
+                        <th class="pb-3">File Name</th>
+                        <th class="pb-3">Upload Date</th>
+                        <th class="pb-3">Uploaded By</th>
+                        <th class="pb-3">Total Rows</th>
+                        <th class="pb-3">New / Updated</th>
+                        <th class="pb-3">Status</th>
+                        <th class="pb-3 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    {% for b in batches %}
+                    <tr>
+                        <td class="py-3 font-bold text-indigo-400">#{{ b.batch_id }}</td>
+                        <td class="py-3 font-bold text-slate-200">
+                            <a href="{{ url_for('his_sync.batch_detail', batch_id=b.batch_id) }}" class="hover:underline">{{ b.source_file_name }}</a>
+                        </td>
+                        <td class="py-3 text-slate-400">{{ b.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="py-3 text-slate-300 font-medium">{{ b.uploader.name }}</td>
+                        <td class="py-3 font-bold text-slate-200">{{ b.total_records }}</td>
+                        <td class="py-3 text-slate-300">
+                            <span class="text-emerald-400 font-bold">+{{ b.new_records }}</span> / 
+                            <span class="text-sky-400 font-bold">{{ b.updated_records }}</span>
+                        </td>
+                        <td class="py-3">
+                            <span class="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full 
+                                {% if b.batch_status == 'COMPLETED' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                                {% elif b.batch_status == 'PARTIALLY_COMPLETED' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
+                                {% elif b.batch_status == 'VALIDATED' %}bg-sky-500/10 text-sky-400 border border-sky-500/20
+                                {% else %}bg-slate-500/10 text-slate-400 border border-slate-500/20{% endif %}">
+                                {{ b.batch_status }}
+                            </span>
+                        </td>
+                        <td class="py-3 text-right space-x-2">
+                            <a href="{{ url_for('his_sync.batch_detail', batch_id=b.batch_id) }}" class="btn-secondary text-[10px] py-1 px-2.5">
+                                View &rarr;
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

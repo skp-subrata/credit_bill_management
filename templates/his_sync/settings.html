@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}HIS Sync Settings - HIS Data Sync{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div>
+        <h1 class="text-2xl font-black text-slate-100">HIS Synchronization Settings</h1>
+        <p class="text-xs text-slate-400 mt-1">Configure automated file ingestion, sync schedules, and email adapters.</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('his_sync.settings') }}" class="space-y-6">
+
+        <!-- 1. Sync Engine Core Configuration -->
+        <div class="glass-panel p-6">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                Core Sync Behavior
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Synchronization Strategy</label>
+                    <select name="sync_mode" class="w-full bg-slate-900/90 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                        <option value="INCREMENTAL_SYNC" {% if setting.sync_mode == 'INCREMENTAL_SYNC' %}selected{% endif %}>
+                            Incremental Sync (Upsert based on Location ID + IP Number)
+                        </option>
+                        <option value="FULL_SNAPSHOT_SYNC" {% if setting.sync_mode == 'FULL_SNAPSHOT_SYNC' %}selected{% endif %}>
+                            Full Daily Snapshot (Reconcile state changes & mark missing as discharged)
+                        </option>
+                    </select>
+                    <p class="text-[10px] text-slate-500 mt-1">Incremental preserves non-HIS workflow fields and updates facts automatically.</p>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Scheduled Automatic Execution</label>
+                    <select name="schedule_frequency" class="w-full bg-slate-900/90 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                        <option value="HOURLY" {% if setting.schedule_frequency == 'HOURLY' %}selected{% endif %}>Hourly Sync (Every 60 minutes)</option>
+                        <option value="EVERY_30_MIN" {% if setting.schedule_frequency == 'EVERY_30_MIN' %}selected{% endif %}>Every 30 Minutes</option>
+                        <option value="DAILY_NIGHTLY" {% if setting.schedule_frequency == 'DAILY_NIGHTLY' %}selected{% endif %}>Nightly Batch (02:00 AM)</option>
+                    </select>
+                </div>
+
+                <div class="md:col-span-2 flex items-center gap-3 pt-2">
+                    <input type="checkbox" id="auto_sync_enabled" name="auto_sync_enabled" {% if setting.auto_sync_enabled %}checked{% endif %}
+                        class="w-4 h-4 rounded border-slate-700 text-indigo-600 focus:ring-indigo-500 bg-slate-900">
+                    <label for="auto_sync_enabled" class="text-xs font-semibold text-slate-200 cursor-pointer">
+                        Enable Automatic Background Synchronization on File Upload / Ingestion
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Microsoft Graph Email Adapter Ingestion -->
+        <div class="glass-panel p-6 border-l-4 border-emerald-500">
+            <h2 class="text-sm font-bold text-slate-100 mb-2 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Automated Email File Ingestion (Microsoft Graph API)
+            </h2>
+            <p class="text-xs text-slate-400 mb-4">Automatically fetch daily Excel/CSV attachments sent by the hospital HIS engine to designated mailbox folders.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Target Mailbox Folder</label>
+                    <input type="text" name="email_folder" value="{{ setting.email_folder or 'Inbox/HIS' }}"
+                        class="w-full bg-slate-900/90 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                    <p class="text-[10px] text-slate-500 mt-1">Graph API monitored folder path for HIS report emails.</p>
+                </div>
+
+                <div class="flex items-center gap-3 pt-4">
+                    <input type="checkbox" id="email_ingestion_enabled" name="email_ingestion_enabled" {% if setting.email_ingestion_enabled %}checked{% endif %}
+                        class="w-4 h-4 rounded border-slate-700 text-emerald-600 focus:ring-emerald-500 bg-slate-900">
+                    <label for="email_ingestion_enabled" class="text-xs font-semibold text-slate-200 cursor-pointer">
+                        Enable Email Attachment Auto Ingestion
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="btn-primary text-xs px-6 py-2.5">
+                Save System Settings
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Payer & Master Mappings - HIS Data Sync{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div>
+        <h1 class="text-2xl font-black text-slate-100">HIS Master Mapping Engine</h1>
+        <p class="text-xs text-slate-400 mt-1">Map unstandardized HIS company/payer names to application Master Payers.</p>
+    </div>
+
+    <!-- Mapping Form & Rules Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Add / Edit Mapping Rule Form -->
+        <div class="glass-panel p-6 lg:col-span-1 h-fit">
+            <h2 class="text-sm font-bold text-slate-100 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+                Add / Update Payer Mapping
+            </h2>
+
+            <form method="POST" action="{{ url_for('his_sync.mappings') }}" class="space-y-4 text-xs">
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">HIS Source Company Name *</label>
+                    <input type="text" name="source_company_name" required placeholder="e.g. STAR HEALTH & ALLIED INSURANCE"
+                        class="w-full bg-slate-900/90 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                    <p class="text-[10px] text-slate-500 mt-1">Exact name as appeared in HIS Excel column COMPANYNAME</p>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Target Application Payer *</label>
+                    <select name="payer_id" required class="w-full bg-slate-900/90 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                        <option value="">-- Select Master Payer --</option>
+                        {% for p in payers %}
+                        <option value="{{ p.payer_id }}">{{ p.payer_name }} ({{ p.payer_code }}) - {{ p.payer_type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Bill Type</label>
+                    <select name="bill_type" class="w-full bg-slate-900/90 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                        <option value="CREDIT">CREDIT (Insurance / TPA / Govt)</option>
+                        <option value="CASH">CASH (Direct Patient Pay)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-slate-400 font-semibold mb-1">Hospital Unit (Optional)</label>
+                    <select name="unit_id" class="w-full bg-slate-900/90 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500">
+                        <option value="">-- All Units (Global Mapping) --</option>
+                        {% for u in units %}
+                        <option value="{{ u.unit_id }}">{{ u.unit_name }} ({{ u.unit_code }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-primary w-full text-xs py-2.5">
+                    Save Mapping Rule
+                </button>
+            </form>
+        </div>
+
+        <!-- Existing Mapping Rules Table -->
+        <div class="glass-panel p-6 lg:col-span-2">
+            <h2 class="text-sm font-bold text-slate-100 mb-4">Configured Payer Mappings ({{ mappings|length }})</h2>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                            <th class="pb-3">HIS Company Name</th>
+                            <th class="pb-3">Normalized Pattern</th>
+                            <th class="pb-3">Mapped Payer</th>
+                            <th class="pb-3">Bill Type</th>
+                            <th class="pb-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                        {% for m in mappings %}
+                        <tr>
+                            <td class="py-3 font-semibold text-slate-200">{{ m.source_company_name }}</td>
+                            <td class="py-3 font-mono text-[10px] text-indigo-300 bg-slate-900/50 px-2 py-0.5 rounded w-fit">{{ m.normalized_company_name }}</td>
+                            <td class="py-3 font-bold text-emerald-400">
+                                {% if m.payer %}{{ m.payer.payer_name }}{% else %}<span class="text-rose-400">Unlinked</span>{% endif %}
+                            </td>
+                            <td class="py-3">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                                    {{ m.bill_type }}
+                                </span>
+                            </td>
+                            <td class="py-3">
+                                {% if m.active %}
+                                <span class="text-emerald-400 font-extrabold text-[10px]">● Active</span>
+                                {% else %}
+                                <span class="text-slate-500 font-bold text-[10px]">Disabled</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="py-8 text-center text-slate-500">No custom master mappings configured yet. System will auto-match exact normalized names.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

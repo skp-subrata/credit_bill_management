@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Credit Bill Management{% endblock %}</title>
+    <title>{% block title %}Hospital Credit Billing Management System{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -11,10 +11,11 @@
             theme: {
                 extend: {
                     colors: {
-                        background: '#f8fafc',
-                        darkBackground: '#0f172a',
-                        primary: '#4f46e5',
-                        darkPrimary: '#6366f1'
+                        slate: {
+                            850: '#0f172a',
+                            900: '#0b0f19',
+                            950: '#05070c'
+                        }
                     }
                 }
             }
@@ -22,104 +23,175 @@
     </script>
     <style type="text/tailwindcss">
         @layer utilities {
-            .glass-card {
-                @apply bg-white/70 dark:bg-slate-800/70 border border-slate-200/50 dark:border-slate-700/50 rounded-3xl shadow-xl backdrop-blur-md;
+            .glass-panel {
+                @apply bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl backdrop-blur-md;
             }
             .glass-nav {
-                @apply bg-white/60 dark:bg-slate-900/60 border-b border-slate-200/50 dark:border-slate-800/50 backdrop-blur-md;
+                @apply bg-slate-900/90 border-b border-slate-800 backdrop-blur-md;
             }
             .btn-primary {
-                @apply inline-flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2.5 shadow-md shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200;
+                @apply inline-flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 shadow-lg shadow-indigo-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200;
             }
             .btn-secondary {
-                @apply inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-200 font-medium px-4 py-2.5 transition-all duration-200;
-            }
-            .form-input {
-                @apply flex h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 px-3.5 py-2 text-sm shadow-sm transition-all focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:text-slate-100;
-            }
-            .form-label {
-                @apply text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block;
+                @apply inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 transition-all duration-200;
             }
         }
         body {
-            background-color: #f1f5f9;
+            background-color: #0b0f19;
             background-image: 
-                radial-gradient(at 0% 0%, rgba(224,231,255,0.7) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(243,232,255,0.7) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(224,242,254,0.7) 0px, transparent 50%);
-            background-attachment: fixed;
-        }
-        .dark body {
-            background-color: #0f172a;
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(30,27,75,0.8) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(88,28,135,0.6) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(15,23,42,0.9) 0px, transparent 50%);
+                radial-gradient(at 0% 0%, rgba(30, 27, 75, 0.4) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(15, 23, 42, 0.6) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(17, 24, 39, 0.8) 0px, transparent 50%);
             background-attachment: fixed;
         }
     </style>
 </head>
-<body class="text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="text-slate-100 min-h-screen flex flex-col font-sans antialiased">
 
-    <!-- Header Navigation -->
+    <!-- Header Navigation Bar -->
     <header class="sticky top-0 z-50 glass-nav">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Brand Logo & Name -->
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-indigo-500/30">
-                    💳
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-500/20">
+                    🏥
                 </div>
-                <a href="{{ url_for('index') }}" class="text-lg font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-400">
-                    Credit Bill Manager
+                <a href="{{ url_for('main.dashboard') }}" class="text-base font-black tracking-tight text-slate-100 flex items-center gap-2">
+                    Hospital Credit Bill
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20">v2.0</span>
                 </a>
             </div>
 
             {% if session.get('user_id') %}
-            <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
-                <a href="{{ url_for('index') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Dashboard</a>
-                <a href="{{ url_for('cards') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Credit Cards</a>
-                <a href="{{ url_for('bills') }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">Bills & Payments</a>
-                {% if session.get('role') == 'admin' %}
-                <a href="{{ url_for('admin_dashboard') }}" class="px-2.5 py-1 rounded-full bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-500/30 hover:bg-indigo-600 hover:text-white transition-all text-xs flex items-center gap-1">
-                    🛡️ Admin Portal
+            <!-- Navigation Links -->
+            <nav class="hidden lg:flex items-center gap-1 text-xs font-semibold text-slate-300">
+                <a href="{{ url_for('main.dashboard') }}" 
+                   class="px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors {% if request_endpoint == 'main.dashboard' %}bg-slate-800 text-indigo-400 font-bold{% endif %}">
+                   Dashboard
                 </a>
+
+                <!-- Encounters Dropdown -->
+                <div class="relative group">
+                    <button class="px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1">
+                        Encounters ▾
+                    </button>
+                    <div class="absolute left-0 top-full mt-1 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                        <a href="{{ url_for('encounters.ip_admissions') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">IP Admissions</a>
+                        <a href="{{ url_for('encounters.op_episodes') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">OP Episodes</a>
+                    </div>
+                </div>
+
+                <!-- Billing Link -->
+                <a href="{{ url_for('billing.bills') }}" 
+                   class="px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors {% if 'billing' in request_endpoint %}bg-slate-800 text-indigo-400 font-bold{% endif %}">
+                   Bills & Workflow
+                </a>
+
+                <!-- HIS Data Sync Dropdown (NEW MODULE) -->
+                <div class="relative group">
+                    <button class="px-3 py-2 rounded-lg hover:bg-slate-800 text-indigo-300 font-bold transition-colors flex items-center gap-1 bg-indigo-950/40 border border-indigo-800/50">
+                        ⚡ HIS Sync ▾
+                    </button>
+                    <div class="absolute left-0 top-full mt-1 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1.5 hidden group-hover:block z-50">
+                        <a href="{{ url_for('his_sync.upload') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-200 hover:text-indigo-400 font-semibold">+ Upload HIS File</a>
+                        <a href="{{ url_for('his_sync.history') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">Sync History Log</a>
+                        <a href="{{ url_for('his_sync.errors') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-rose-400">Validation Errors</a>
+                        <a href="{{ url_for('his_sync.reconciliation') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">Reconciliation Report</a>
+                        <div class="border-t border-slate-800 my-1"></div>
+                        <a href="{{ url_for('his_sync.mappings') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-amber-400">Master Payer Mappings</a>
+                        <a href="{{ url_for('his_sync.settings') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">Sync Settings</a>
+                    </div>
+                </div>
+
+                <!-- Masters Dropdown -->
+                <div class="relative group">
+                    <button class="px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1">
+                        Masters ▾
+                    </button>
+                    <div class="absolute left-0 top-full mt-1 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                        <a href="{{ url_for('masters.units') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">Hospital Units</a>
+                        <a href="{{ url_for('masters.payers') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">Master Payers</a>
+                        <a href="{{ url_for('masters.hospital_payers') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">Hospital Payers</a>
+                        <a href="{{ url_for('masters.patients') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-indigo-400">Patients Master</a>
+                    </div>
+                </div>
+
+                <!-- Reports -->
+                <a href="{{ url_for('reports.index') }}" 
+                   class="px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors {% if 'reports' in request_endpoint %}bg-slate-800 text-indigo-400 font-bold{% endif %}">
+                   Reports
+                </a>
+
+                {% if session.get('role_code') in ['super_admin', 'admin'] %}
+                <!-- Admin Dropdown -->
+                <div class="relative group">
+                    <button class="px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1 text-purple-400 font-bold">
+                        🛡️ Admin ▾
+                    </button>
+                    <div class="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                        <a href="{{ url_for('users.users') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-purple-400">User Management</a>
+                        <a href="{{ url_for('users.audit_logs') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-purple-400">Audit Logs</a>
+                    </div>
+                </div>
                 {% endif %}
             </nav>
 
-            <div class="flex items-center gap-4">
-                <div class="text-right text-xs hidden sm:block">
-                    <div class="font-semibold text-slate-800 dark:text-slate-200">{{ session.get('full_name') }}</div>
-                    <div class="text-slate-500 dark:text-slate-400 capitalize">{{ session.get('role') }}</div>
+            <!-- Unit Selector & User Info -->
+            <div class="flex items-center gap-3">
+                {% if all_active_units %}
+                <form method="POST" action="{{ url_for('auth.select_unit', unit_id=0) }}" id="unitSelectForm" class="hidden sm:block">
+                    <select onchange="this.form.action='{{ url_for('auth.select_unit', unit_id=0) }}'.replace('0', this.value); this.form.submit();"
+                            class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                        {% for u in all_active_units %}
+                        <option value="{{ u.unit_id }}" {% if current_unit and current_unit.unit_id == u.unit_id %}selected{% endif %}>
+                            🏥 {{ u.unit_code }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% endif %}
+
+                <div class="text-right text-xs hidden md:block">
+                    <div class="font-bold text-slate-100">{{ session.get('name') }}</div>
+                    <div class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">{{ session.get('role_name') or session.get('role_code') }}</div>
                 </div>
-                <a href="{{ url_for('logout') }}" class="btn-secondary text-xs py-2 px-3">
+
+                <a href="{{ url_for('auth.logout') }}" class="btn-secondary text-xs py-1.5 px-3">
                     Sign Out
                 </a>
             </div>
             {% else %}
             <div class="flex items-center gap-3">
-                <a href="{{ url_for('login') }}" class="btn-secondary text-xs py-2 px-3">Log In</a>
-                <a href="{{ url_for('admin_login') }}" class="px-3 py-2 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 transition-colors">Admin Login</a>
-                <a href="{{ url_for('register') }}" class="btn-primary text-xs py-2 px-3">Register</a>
+                <a href="{{ url_for('auth.login') }}" class="btn-primary text-xs py-2 px-4">Sign In</a>
             </div>
             {% endif %}
+
         </div>
     </header>
 
-    <!-- Flash Messages -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Main Body Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Flash Messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="space-y-3 mb-6">
+                <div class="space-y-2 mb-6">
                     {% for category, message in messages %}
-                        <div class="p-4 rounded-2xl text-sm border flex items-center justify-between shadow-sm
+                        <div class="p-3.5 rounded-xl text-xs font-semibold border flex items-center justify-between shadow-lg backdrop-blur-md
                             {% if category == 'error' or category == 'danger' %}
-                                bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-300
+                                bg-rose-500/10 border-rose-500/30 text-rose-300
+                            {% elif category == 'warning' %}
+                                bg-amber-500/10 border-amber-500/30 text-amber-300
                             {% elif category == 'success' %}
-                                bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300
+                                bg-emerald-500/10 border-emerald-500/30 text-emerald-300
                             {% else %}
-                                bg-indigo-500/10 border-indigo-500/30 text-indigo-700 dark:text-indigo-300
+                                bg-indigo-500/10 border-indigo-500/30 text-indigo-300
                             {% endif %}">
-                            <span>{{ message }}</span>
-                            <button onclick="this.parentElement.remove()" class="text-current opacity-70 hover:opacity-100 font-bold ml-4">&times;</button>
+                            <div class="flex items-center gap-2">
+                                <span>{{ message }}</span>
+                            </div>
+                            <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white font-bold text-base ml-4">&times;</button>
                         </div>
                     {% endfor %}
                 </div>
@@ -130,11 +202,9 @@
     </main>
 
     <!-- Footer -->
-    <footer class="mt-auto border-t border-slate-200/50 dark:border-slate-800/50 py-6 text-center text-xs text-slate-500">
-        &copy; 2026 Credit Bill Management System. Built with Flask & Tailwind.
-        &copy; {{ 2026 }} Credit Bill Management System. Built with Flask & Tailwind.
+    <footer class="mt-auto border-t border-slate-800/80 py-4 text-center text-[11px] text-slate-500">
+        Hospital Credit Billing Management System &copy; 2026 | Enterprise HIS Data Integration & Sync Engine
     </footer>
 
 </body>
 </html>
-

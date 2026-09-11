@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Sync Reconciliation - HIS Data Sync{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-100">HIS Sync Reconciliation Report</h1>
+            <p class="text-xs text-slate-400 mt-1">Audit and compare source HIS record counts against application database upserts.</p>
+        </div>
+
+        <!-- Batch Selection Form -->
+        <form method="GET" action="{{ url_for('his_sync.reconciliation') }}" class="flex items-center gap-2">
+            <select name="batch_id" onchange="this.form.submit()" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500">
+                <option value="">-- Select Batch --</option>
+                {% for b in batches %}
+                <option value="{{ b.batch_id }}" {% if batch and batch.batch_id == b.batch_id %}selected{% endif %}>
+                    Batch #{{ b.batch_id }} - {{ b.source_file_name }} ({{ b.uploaded_at.strftime('%Y-%m-%d') }})
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% if batch %}
+    <!-- Batch Header Information -->
+    <div class="glass-panel p-6 border-l-4 border-indigo-500">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
+            <div>
+                <span class="text-slate-400 block font-semibold uppercase text-[10px]">Batch Reference</span>
+                <span class="font-bold text-slate-100 text-sm">Batch #{{ batch.batch_id }}</span>
+            </div>
+            <div>
+                <span class="text-slate-400 block font-semibold uppercase text-[10px]">Source File</span>
+                <span class="font-medium text-slate-200 truncate block">{{ batch.source_file_name }}</span>
+            </div>
+            <div>
+                <span class="text-slate-400 block font-semibold uppercase text-[10px]">Uploaded At</span>
+                <span class="font-medium text-slate-200">{{ batch.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            </div>
+            <div>
+                <span class="text-slate-400 block font-semibold uppercase text-[10px]">Batch Status</span>
+                <span class="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full 
+                    {% if batch.batch_status == 'COMPLETED' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                    {% elif batch.batch_status == 'PARTIALLY_COMPLETED' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
+                    {% else %}bg-sky-500/10 text-sky-400 border border-sky-500/20{% endif %}">
+                    {{ batch.batch_status }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reconciliation Stat Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="glass-panel p-4 text-center">
+            <span class="text-[10px] font-bold uppercase text-slate-400">Total Source Rows</span>
+            <div class="text-2xl font-black text-slate-100 mt-1">{{ recon.source_records }}</div>
+            <span class="text-[10px] text-slate-500">Extracted from HIS file</span>
+        </div>
+        <div class="glass-panel p-4 text-center border-t-2 border-emerald-500">
+            <span class="text-[10px] font-bold uppercase text-emerald-400">Successfully Synced</span>
+            <div class="text-2xl font-black text-emerald-400 mt-1">{{ recon.successful_records }}</div>
+            <span class="text-[10px] text-slate-500">Upserted into App DB</span>
+        </div>
+        <div class="glass-panel p-4 text-center border-t-2 border-indigo-500">
+            <span class="text-[10px] font-bold uppercase text-indigo-400">New Admissions</span>
+            <div class="text-2xl font-black text-indigo-400 mt-1">+{{ recon.new_records }}</div>
+            <span class="text-[10px] text-slate-500">New records added</span>
+        </div>
+        <div class="glass-panel p-4 text-center border-t-2 border-sky-500">
+            <span class="text-[10px] font-bold uppercase text-sky-400">Updated Records</span>
+            <div class="text-2xl font-black text-sky-400 mt-1">{{ recon.updated_records }}</div>
+            <span class="text-[10px] text-slate-500">Existing records modified</span>
+        </div>
+    </div>
+
+    <!-- Detailed Reconciliation Breakdown Table -->
+    <div class="glass-panel p-6">
+        <h2 class="text-sm font-bold text-slate-200 mb-4">Detailed Audit Breakdown</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left">
+                <thead>
+                    <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                        <th class="pb-3">Reconciliation Metric</th>
+                        <th class="pb-3 text-center">Record Count</th>
+                        <th class="pb-3 text-center">% of Total</th>
+                        <th class="pb-3 text-right">Status & Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    <tr>
+                        <td class="py-3 font-semibold text-slate-200">New Patient & Admission Upserts</td>
+                        <td class="py-3 text-center font-bold text-emerald-400">+{{ recon.new_records }}</td>
+                        <td class="py-3 text-center text-slate-400">
+                            {% if recon.source_records > 0 %}{{ (recon.new_records / recon.source_records * 100) | round(1) }}%{% else %}0%{% endif %}
+                        </td>
+                        <td class="py-3 text-right text-emerald-400 font-bold">Created</td>
+                    </tr>
+                    <tr>
+                        <td class="py-3 font-semibold text-slate-200">Existing Records Updated (Facts / Discharge)</td>
+                        <td class="py-3 text-center font-bold text-sky-400">{{ recon.updated_records }}</td>
+                        <td class="py-3 text-center text-slate-400">
+                            {% if recon.source_records > 0 %}{{ (recon.updated_records / recon.source_records * 100) | round(1) }}%{% else %}0%{% endif %}
+                        </td>
+                        <td class="py-3 text-right text-sky-400 font-bold">Updated</td>
+                    </tr>
+                    <tr>
+                        <td class="py-3 font-semibold text-slate-200">Unchanged Records (Identical Hash)</td>
+                        <td class="py-3 text-center font-bold text-slate-400">{{ recon.unchanged_records }}</td>
+                        <td class="py-3 text-center text-slate-400">
+                            {% if recon.source_records > 0 %}{{ (recon.unchanged_records / recon.source_records * 100) | round(1) }}%{% else %}0%{% endif %}
+                        </td>
+                        <td class="py-3 text-right text-slate-400 font-medium">Skipped</td>
+                    </tr>
+                    <tr>
+                        <td class="py-3 font-semibold text-slate-200">Validation Errors (Missing Required Fields / Dates)</td>
+                        <td class="py-3 text-center font-bold text-rose-400">{{ recon.invalid_records }}</td>
+                        <td class="py-3 text-center text-slate-400">
+                            {% if recon.source_records > 0 %}{{ (recon.invalid_records / recon.source_records * 100) | round(1) }}%{% else %}0%{% endif %}
+                        </td>
+                        <td class="py-3 text-right">
+                            {% if recon.invalid_records > 0 %}
+                            <a href="{{ url_for('his_sync.errors', batch_id=batch.batch_id) }}" class="text-rose-400 font-bold hover:underline">Fix Errors &rarr;</a>
+                            {% else %}
+                            <span class="text-slate-500">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="py-3 font-semibold text-slate-200">Pending Master Mappings (Payers / Doctors)</td>
+                        <td class="py-3 text-center font-bold text-amber-400">{{ recon.mapping_pending }}</td>
+                        <td class="py-3 text-center text-slate-400">
+                            {% if recon.source_records > 0 %}{{ (recon.mapping_pending / recon.source_records * 100) | round(1) }}%{% else %}0%{% endif %}
+                        </td>
+                        <td class="py-3 text-right">
+                            {% if recon.mapping_pending > 0 %}
+                            <a href="{{ url_for('his_sync.mappings') }}" class="text-amber-400 font-bold hover:underline">Map Masters &rarr;</a>
+                            {% else %}
+                            <span class="text-slate-500">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="glass-panel p-12 text-center text-slate-400">
+        <p class="text-sm font-semibold">No HIS sync batches found to reconcile.</p>
+        <a href="{{ url_for('his_sync.upload') }}" class="btn-primary text-xs mt-4 inline-block">+ Upload First HIS File</a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

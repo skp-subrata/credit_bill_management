@@ -143,6 +143,7 @@ class IPAdmission(db.Model):
     admission_status = db.Column(db.String(50), default='ADMITTED') # ADMITTED, DISCHARGE_INITIATED, DISCHARGED
     bill_type = db.Column(db.String(20), default='CREDIT') # CREDIT, CASH
     discharge_status = db.Column(db.String(50), default='NOT_DISCHARGED')
+    billing_eligible = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -207,7 +208,6 @@ class Bill(db.Model):
     approved_amount = db.Column(db.Float, default=0.0)
     outstanding_amount = db.Column(db.Float, nullable=False, default=0.0)
     bill_status = db.Column(db.String(50), default='GENERATED', index=True) 
-    # DRAFT, GENERATED, VERIFICATION_PENDING, VERIFIED, READY_FOR_DISPATCH, DISPATCHED, ACKNOWLEDGED, PAYMENT_PENDING, PARTIALLY_PAID, PAID, CLOSED, CANCELLED
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -227,7 +227,7 @@ class BillVerification(db.Model):
     __tablename__ = 'bill_verifications'
     verification_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     bill_id = db.Column(db.Integer, db.ForeignKey('bills.bill_id'), nullable=False)
-    verification_status = db.Column(db.String(50), default='PENDING') # PENDING, VERIFIED, REJECTED, REWORK_REQUIRED
+    verification_status = db.Column(db.String(50), default='PENDING')
     verified_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     verified_at = db.Column(db.DateTime, default=datetime.utcnow)
     verification_remarks = db.Column(db.Text, default='')
@@ -243,7 +243,7 @@ class BillDispatch(db.Model):
     bill_id = db.Column(db.Integer, db.ForeignKey('bills.bill_id'), nullable=False)
     bill_number = db.Column(db.String(50), nullable=False)
     dispatch_date = db.Column(db.String(20), nullable=False)
-    dispatch_mode = db.Column(db.String(50), default='COURIER') # EMAIL, COURIER, HAND_DELIVERY, PORTAL, REGISTERED_POST, OTHER
+    dispatch_mode = db.Column(db.String(50), default='COURIER')
     courier_name = db.Column(db.String(100), default='')
     tracking_number = db.Column(db.String(100), default='')
     recipient_name = db.Column(db.String(150), default='')
@@ -268,7 +268,7 @@ class BillQuery(db.Model):
     query_type = db.Column(db.String(100), default='DOCUMENTATION')
     query_description = db.Column(db.Text, nullable=False)
     raised_by_payer = db.Column(db.String(150), default='')
-    query_status = db.Column(db.String(50), default='OPEN', index=True) # OPEN, IN_PROGRESS, RESPONDED, RESOLVED, CLOSED
+    query_status = db.Column(db.String(50), default='OPEN', index=True)
     assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     due_date = db.Column(db.String(20), nullable=True)
     response_remarks = db.Column(db.Text, default='')
@@ -290,7 +290,7 @@ class BillPayment(db.Model):
     amount_received = db.Column(db.Float, nullable=False, default=0.0)
     short_fall_amount = db.Column(db.Float, default=0.0)
     disallowance_reason = db.Column(db.Text, default='')
-    payment_status = db.Column(db.String(50), default='FULL') # FULL, PARTIAL, REJECTED
+    payment_status = db.Column(db.String(50), default='FULL')
     processed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     remarks = db.Column(db.Text, default='')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -298,3 +298,151 @@ class BillPayment(db.Model):
 
     processor = db.relationship('User', foreign_keys=[processed_by])
 
+
+# ============================================================
+# HIS DATA IMPORT & SYNCHRONIZATION EXTENSION MODELS
+# ============================================================
+
+class SyncBatch(db.Model):
+    __tablename__ = 'sync_batches'
+    batch_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    source_system = db.Column(db.String(50), default='HIS_EXCEL') # HIS_EXCEL, OUTLOOK_EMAIL, HIS_API, SFTP
+    source_type = db.Column(db.String(50), default='FILE_UPLOAD') # FILE_UPLOAD, EMAIL_ATTACHMENT, API_FEED
+    source_file_name = db.Column(db.String(255), nullable=False)
+    source_file_hash = db.Column(db.String(64), index=True, nullable=False)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    total_records = db.Column(db.Integer, default=0)
+    new_records = db.Column(db.Integer, default=0)
+    updated_records = db.Column(db.Integer, default=0)
+    unchanged_records = db.Column(db.Integer, default=0)
+    duplicate_records = db.Column(db.Integer, default=0)
+    invalid_records = db.Column(db.Integer, default=0)
+    mapping_pending_records = db.Column(db.Integer, default=0)
+    failed_records = db.Column(db.Integer, default=0)
+    successful_records = db.Column(db.Integer, default=0)
+    batch_status = db.Column(db.String(50), default='UPLOADED', index=True) 
+    # UPLOADED, VALIDATING, VALIDATED, PROCESSING, COMPLETED, PARTIALLY_COMPLETED, FAILED, CANCELLED
+    remarks = db.Column(db.Text, default='')
+
+    uploader = db.relationship('User', foreign_keys=[uploaded_by])
+    staging_rows = db.relationship('HISIPStaging', backref='batch', lazy=True, cascade='all, delete-orphan')
+
+class HISIPStaging(db.Model):
+    __tablename__ = 'his_ip_staging'
+    staging_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey('sync_batches.batch_id'), nullable=False, index=True)
+    row_number = db.Column(db.Integer, nullable=False)
+
+    # 36 Raw HIS Fields
+    uhid = db.Column(db.String(100), index=True)
+    patientname = db.Column(db.String(200))
+    ipnumber = db.Column(db.String(100), index=True)
+    gender = db.Column(db.String(50))
+    age = db.Column(db.String(50))
+    admitteddate = db.Column(db.String(100))
+    planingdate = db.Column(db.String(100))
+    closingdate = db.Column(db.String(100))
+    primarydoctor = db.Column(db.String(200))
+    nursecheckedouttime = db.Column(db.String(100))
+    admiting_doctor = db.Column(db.String(200))
+    admiting_doctor_dept = db.Column(db.String(200))
+    treating_doctor = db.Column(db.String(200))
+    treating_doctor_dept = db.Column(db.String(200))
+    interimdate = db.Column(db.String(100))
+    discharge_billdate = db.Column(db.String(100))
+    bed_occupied = db.Column(db.String(100))
+    specialization = db.Column(db.String(200))
+    specializationdesc = db.Column(db.String(200))
+    bedno = db.Column(db.String(100))
+    bedtype = db.Column(db.String(100))
+    billablebed = db.Column(db.String(100))
+    bednumber = db.Column(db.String(100))
+    wardname = db.Column(db.String(200))
+    companyname = db.Column(db.String(200))
+    refraldoctor = db.Column(db.String(200))
+    currentstatus = db.Column(db.String(100))
+    reasonandremarks = db.Column(db.Text)
+    contactno = db.Column(db.String(100))
+    address1 = db.Column(db.Text)
+    countryname = db.Column(db.String(100))
+    statename = db.Column(db.String(100))
+    cityname = db.Column(db.String(100))
+    districtname = db.Column(db.String(100))
+    createdby = db.Column(db.String(100))
+    locationid = db.Column(db.String(100), index=True)
+
+    raw_payload = db.Column(db.Text, nullable=True) # Full JSON copy
+    validation_status = db.Column(db.String(50), default='PENDING', index=True) # VALID, INVALID, WARNING, MAPPING_PENDING
+    validation_error = db.Column(db.Text, default='')
+    processing_status = db.Column(db.String(50), default='PENDING', index=True) # PENDING, PROCESSED, SKIPPED, FAILED
+    classification = db.Column(db.String(50), default='NEW') # NEW, UPDATED, UNCHANGED, DUPLICATE, INVALID, MAPPING_PENDING
+    application_record_id = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime, nullable=True)
+
+class HISPayerMapping(db.Model):
+    __tablename__ = 'his_payer_mapping'
+    mapping_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    source_company_name = db.Column(db.String(200), index=True, nullable=False)
+    normalized_company_name = db.Column(db.String(200), index=True, nullable=False)
+    payer_id = db.Column(db.Integer, db.ForeignKey('payers.payer_id'), nullable=True)
+    payer_type = db.Column(db.String(50), default='INSURANCE')
+    bill_type = db.Column(db.String(20), default='CREDIT') # CREDIT, CASH
+    unit_id = db.Column(db.Integer, db.ForeignKey('hospital_units.unit_id'), nullable=True)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    payer = db.relationship('Payer', foreign_keys=[payer_id])
+    unit = db.relationship('HospitalUnit', foreign_keys=[unit_id])
+
+class DoctorMaster(db.Model):
+    __tablename__ = 'doctor_master'
+    doctor_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    doctor_code = db.Column(db.String(50), unique=True, nullable=False)
+    doctor_name = db.Column(db.String(200), nullable=False)
+    normalized_doctor_name = db.Column(db.String(200), index=True, nullable=False)
+    department = db.Column(db.String(100), default='')
+    specialization = db.Column(db.String(100), default='')
+    unit_id = db.Column(db.Integer, db.ForeignKey('hospital_units.unit_id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class HISDoctorMapping(db.Model):
+    __tablename__ = 'his_doctor_mapping'
+    mapping_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    source_doctor_name = db.Column(db.String(200), index=True, nullable=False)
+    normalized_doctor_name = db.Column(db.String(200), index=True, nullable=False)
+    doctor_id = db.Column(db.Integer, db.ForeignKey('doctor_master.doctor_id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    doctor = db.relationship('DoctorMaster', foreign_keys=[doctor_id])
+
+class HISSyncSettings(db.Model):
+    __tablename__ = 'his_sync_settings'
+    setting_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey('hospital_units.unit_id'), nullable=True)
+    sync_mode = db.Column(db.String(50), default='INCREMENTAL_SYNC') # FULL_SYNC, INCREMENTAL_SYNC
+    auto_sync_enabled = db.Column(db.Boolean, default=False)
+    schedule_frequency = db.Column(db.String(50), default='HOURLY')
+    email_ingestion_enabled = db.Column(db.Boolean, default=False)
+    email_folder = db.Column(db.String(100), default='Inbox/HIS')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class EmailIngestionLog(db.Model):
+    __tablename__ = 'email_ingestion_logs'
+    email_log_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    external_message_id = db.Column(db.String(255), unique=True, nullable=False)
+    sender = db.Column(db.String(200), nullable=False)
+    recipient = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(255), default='')
+    received_date = db.Column(db.DateTime, nullable=False)
+    attachment_name = db.Column(db.String(255), default='')
+    processing_status = db.Column(db.String(50), default='PROCESSED')
+    batch_id = db.Column(db.Integer, db.ForeignKey('sync_batches.batch_id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Upload HIS Feed - HIS Data Sync{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-indigo-600 text-white uppercase tracking-wider">HIS DATA SYNC</span>
+                <span class="text-xs text-slate-400">Import & Sync Module</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-100 mt-1">Upload HIS Excel / CSV Data Feed</h1>
+            <p class="text-xs text-slate-400">Upload raw hospital IP admission & discharge feed files for staging, validation, and idempotent sync.</p>
+        </div>
+        
+        <div class="flex gap-2">
+            <a href="{{ url_for('his_sync.history') }}" class="btn-secondary text-xs">
+                📜 Sync History
+            </a>
+            <a href="{{ url_for('his_sync.mappings') }}" class="btn-secondary text-xs">
+                ⚙️ Master Mappings
+            </a>
+        </div>
+    </div>
+
+    <!-- Drag & Drop Upload Form -->
+    <div class="glass-panel p-8">
+        <form method="POST" action="{{ url_for('his_sync.upload') }}" enctype="multipart/form-data" class="space-y-6">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label for="source_system" class="form-label">Source System</label>
+                    <select id="source_system" name="source_system" class="form-input">
+                        <option value="HIS_EXCEL">HIS Excel / CSV Feed</option>
+                        <option value="OUTLOOK_EMAIL">Microsoft 365 / Outlook Attachment</option>
+                        <option value="HIS_API">HIS Direct API Feed</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="sync_mode" class="form-label">Sync Mode</label>
+                    <select id="sync_mode" name="sync_mode" class="form-input">
+                        <option value="INCREMENTAL_SYNC">INCREMENTAL SYNC (Upsert New/Updated)</option>
+                        <option value="FULL_SYNC">FULL SYNC (Complete Verification)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="remarks" class="form-label">Upload Remarks (Optional)</label>
+                    <input type="text" id="remarks" name="remarks" placeholder="Daily morning HIS feed upload" class="form-input">
+                </div>
+            </div>
+
+            <!-- Drag & Drop Area -->
+            <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 rounded-2xl p-10 text-center bg-slate-950/40 transition-all duration-200 relative group">
+                <input type="file" name="file" id="file" accept=".xlsx,.xls,.csv" required onchange="displayFileName(this)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                
+                <div class="space-y-3 pointer-events-none">
+                    <div class="w-16 h-16 rounded-2xl bg-indigo-600/10 text-indigo-400 flex items-center justify-center font-black text-3xl mx-auto group-hover:scale-110 transition-transform">
+                        📁
+                    </div>
+                    <div class="text-sm font-bold text-slate-200">
+                        Drag & Drop your HIS Excel (.xlsx) or CSV (.csv) file here
+                    </div>
+                    <div class="text-xs text-slate-500">
+                        Supports case-insensitive column matching for all 36 HIS columns. SHA-256 duplicate checking active.
+                    </div>
+                    <div id="selected_file_display" class="text-xs font-mono text-indigo-400 font-bold hidden"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button type="submit" class="btn-primary py-3 px-8 text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+                    Upload & Run Validation &rarr;
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Supported Headers Guide -->
+    <div class="glass-panel p-6">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Expected 36 HIS Source Columns</h2>
+        <div class="flex flex-wrap gap-1.5 font-mono text-[10px] text-slate-400">
+            {% set cols = ['UHID', 'PATIENTNAME', 'IPNUMBER', 'GENDER', 'AGE', 'ADMITTEDDATE', 'PLANINGDATE', 'CLOSINGDATE', 'PRIMARYDOCTOR', 'NURSECHECKEDOUTTIME', 'ADMITING_DOCTOR', 'ADMITING_DOCTOR_DEPT', 'TREATING_DOCTOR', 'TREATING_DOCTOR_DEPT', 'INTERIMDATE', 'DISCHARGE_BILLDATE', 'BED_OCCUPIED', 'SPECIALIZATION', 'SPECIALIZATIONDESC', 'BEDNO', 'BEDTYPE', 'BILLABLEBED', 'BEDNUMBER', 'WARDNAME', 'COMPANYNAME', 'REFRALDOCTOR', 'CURRENTSTATUS', 'REASONANDREMARKS', 'CONTACTNO', 'ADDRESS1', 'COUNTRYNAME', 'STATENAME', 'CITYNAME', 'DISTRICTNAME', 'CREATEDBY', 'LOCATIONID'] %}
+            {% for c in cols %}
+            <span class="px-2 py-0.5 rounded bg-slate-950 border border-slate-800">{{ c }}</span>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function displayFileName(input) {
+        if (input.files && input.files[0]) {
+            const display = document.getElementById('selected_file_display');
+            display.innerText = 'Selected File: ' + input.files[0].name + ' (' + (input.files[0].size / 1024).toFixed(1) + ' KB)';
+            display.classList.remove('hidden');
+        }
+    }
+</script>
+{% endblock %}

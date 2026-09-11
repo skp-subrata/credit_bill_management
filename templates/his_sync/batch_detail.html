@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Batch #{{ batch.batch_id }} Detail - HIS Data Sync{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Header Banner -->
+    <div class="glass-panel p-6 border-l-4 border-indigo-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">SYNC BATCH #{{ batch.batch_id }}</span>
+                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
+                    {% if batch.batch_status == 'COMPLETED' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                    {% elif batch.batch_status == 'PARTIALLY_COMPLETED' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
+                    {% elif batch.batch_status == 'VALIDATED' %}bg-sky-500/10 text-sky-400 border border-sky-500/20
+                    {% else %}bg-slate-500/10 text-slate-400 border border-slate-500/20{% endif %}">
+                    STATUS: {{ batch.batch_status }}
+                </span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-100 mt-1">{{ batch.source_file_name }}</h1>
+            <p class="text-xs text-slate-400 mt-0.5">Uploaded by <span class="font-bold text-slate-200">{{ batch.uploader.name }}</span> on {{ batch.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') }} | SHA-256 Hash: <span class="font-mono text-slate-500 text-[10px]">{{ batch.source_file_hash[:16] }}...</span></p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('his_sync.history') }}" class="btn-secondary text-xs">
+                &larr; Sync History
+            </a>
+            {% if batch.batch_status in ('VALIDATED', 'UPLOADED', 'PARTIALLY_COMPLETED') %}
+            <form method="POST" action="{{ url_for('his_sync.execute_sync', batch_id=batch.batch_id) }}" onsubmit="return confirm('Confirm execution of Idempotent Sync Engine?');">
+                <button type="submit" class="btn-primary text-xs bg-emerald-600 hover:bg-emerald-700">
+                    ▶ Execute Sync Engine
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Validation Metrics Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div class="glass-panel p-4 text-center border-t-2 border-indigo-500">
+            <div class="text-[10px] font-bold text-slate-400 uppercase">Total Rows</div>
+            <div class="text-2xl font-black text-slate-100 mt-1">{{ batch.total_records }}</div>
+        </div>
+
+        <div class="glass-panel p-4 text-center border-t-2 border-emerald-500">
+            <div class="text-[10px] font-bold text-slate-400 uppercase">New Records</div>
+            <div class="text-2xl font-black text-emerald-400 mt-1">{{ batch.new_records }}</div>
+        </div>
+
+        <div class="glass-panel p-4 text-center border-t-2 border-sky-500">
+            <div class="text-[10px] font-bold text-slate-400 uppercase">Updated</div>
+            <div class="text-2xl font-black text-sky-400 mt-1">{{ batch.updated_records }}</div>
+        </div>
+
+        <div class="glass-panel p-4 text-center border-t-2 border-slate-500">
+            <div class="text-[10px] font-bold text-slate-400 uppercase">Unchanged</div>
+            <div class="text-2xl font-black text-slate-400 mt-1">{{ batch.unchanged_records }}</div>
+        </div>
+
+        <div class="glass-panel p-4 text-center border-t-2 border-amber-500">
+            <div class="text-[10px] font-bold text-slate-400 uppercase">Unmapped Payers</div>
+            <div class="text-2xl font-black text-amber-400 mt-1">{{ batch.mapping_pending_records }}</div>
+        </div>
+
+        <div class="glass-panel p-4 text-center border-t-2 border-rose-500">
+            <div class="text-[10px] font-bold text-slate-400 uppercase">Invalid Rows</div>
+            <div class="text-2xl font-black text-rose-400 mt-1">{{ batch.invalid_records }}</div>
+        </div>
+
+        <div class="glass-panel p-4 text-center border-t-2 border-teal-500">
+            <div class="text-[10px] font-bold text-slate-400 uppercase">Processed</div>
+            <div class="text-2xl font-black text-teal-400 mt-1">{{ batch.successful_records }}</div>
+        </div>
+    </div>
+
+    <!-- Staging Rows Preview -->
+    <div class="glass-panel p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Raw Staging Records Preview</h2>
+            <a href="{{ url_for('his_sync.errors', batch_id=batch.batch_id) }}" class="text-xs text-amber-400 font-bold hover:underline">
+                View Errors & Reprocess Workbench &rarr;
+            </a>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                        <th class="pb-3">Row #</th>
+                        <th class="pb-3">LOCATIONID</th>
+                        <th class="pb-3">UHID</th>
+                        <th class="pb-3">IPNUMBER</th>
+                        <th class="pb-3">PATIENTNAME</th>
+                        <th class="pb-3">COMPANYNAME</th>
+                        <th class="pb-3">ADMITTEDDATE</th>
+                        <th class="pb-3">CLOSINGDATE</th>
+                        <th class="pb-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono text-[11px]">
+                    {% for s in staging %}
+                    <tr>
+                        <td class="py-2.5 font-bold text-slate-400">#{{ s.row_number }}</td>
+                        <td class="py-2.5 text-indigo-400 font-bold">{{ s.locationid }}</td>
+                        <td class="py-2.5 text-slate-200">{{ s.uhid }}</td>
+                        <td class="py-2.5 font-bold text-slate-200">{{ s.ipnumber }}</td>
+                        <td class="py-2.5 text-slate-300 font-sans font-medium">{{ s.patientname }}</td>
+                        <td class="py-2.5 text-slate-400 font-sans">{{ s.companyname or 'Cash' }}</td>
+                        <td class="py-2.5 text-slate-400">{{ s.admitteddate }}</td>
+                        <td class="py-2.5 text-slate-400">{{ s.closingdate or '-' }}</td>
+                        <td class="py-2.5 font-sans">
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
+                                {% if s.validation_status == 'VALID' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                                {% elif s.validation_status == 'MAPPING_PENDING' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
+                                {% else %}bg-rose-500/10 text-rose-400 border border-rose-500/20{% endif %}">
+                                {{ s.validation_status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
