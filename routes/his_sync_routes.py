@@ -43,9 +43,14 @@ def upload():
             flash(f"Duplicate file warning! This exact file was previously uploaded in Batch #{existing_batch.batch_id} on {existing_batch.uploaded_at.strftime('%Y-%m-%d %H:%M')}.", 'warning')
 
         # Parse Rows
-        parsed_rows = parse_his_file(file_obj.filename, file_bytes)
+        try:
+            parsed_rows = parse_his_file(file_obj.filename, file_bytes)
+        except Exception as err:
+            flash(f"Could not parse file '{file_obj.filename}': {str(err)}. Please ensure it is a valid Excel (.xlsx) or CSV (.csv) file.", 'error')
+            return redirect(url_for('his_sync.upload'))
+
         if not parsed_rows:
-            flash('The uploaded file is empty or missing expected 36 HIS headers.', 'error')
+            flash(f"The file '{file_obj.filename}' is empty, corrupted, or missing expected 36 HIS headers.", 'error')
             return redirect(url_for('his_sync.upload'))
 
         # Create Sync Batch
@@ -115,6 +120,8 @@ def upload():
         # Run Staging Validation Engine
         validate_staging_batch(batch.batch_id)
 
+        log_audit('UPLOAD_HIS_FILE', 'SyncBatch', batch.batch_id, None, {'file_name': file_obj.filename, 'total_rows': len(parsed_rows)})
+        flash(f"File '{file_obj.filename}' staged & validated! Batch #{batch.batch_id} ({len(parsed_rows)} records).", 'success')
         # Auto Sync Option Execution
         if auto_sync:
             process_sync_batch(batch.batch_id, user_id=session.get('user_id'))

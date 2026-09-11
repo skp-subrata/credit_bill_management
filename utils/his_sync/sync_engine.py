@@ -82,6 +82,7 @@ def process_sync_batch(batch_id, user_id=None):
                         if hp:
                             hospital_payer_id = hp.hospital_payer_id
 
+                # 3. Doctor Resolution
                 # 3. Doctor Resolution & Master Upsert
                 doctor_name = treatingdoctor or primarydoctor or 'Staff Doctor'
                 if doctor_name and doctor_name != 'Staff Doctor':
