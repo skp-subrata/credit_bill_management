@@ -1,6 +1,7 @@
 import csv
 import re
 from io import StringIO, BytesIO
+from html.parser import HTMLParser
 from openpyxl import load_workbook
 
 EXPECTED_COLUMNS = [
@@ -50,7 +51,7 @@ HEADER_ALIASES = {
 
     # CLOSINGDATE
     "CLOSINGDATE": "CLOSINGDATE", "DISCHARGEDATE": "CLOSINGDATE", "DOD": "CLOSINGDATE",
-    "DATEOFDISCHARGE": "CLOSINGDATE", "DISDATE": "CLOSINGDATE", "DISCHARGEBILLDATE": "DISCHARGE_BILLDATE",
+    "DATEOFDISCHARGE": "CLOSINGDATE", "DISDATE": "CLOSINGDATE",
 
     # PRIMARYDOCTOR
     "PRIMARYDOCTOR": "PRIMARYDOCTOR", "DOCTOR": "PRIMARYDOCTOR", "DOCTORNAME": "PRIMARYDOCTOR",
@@ -147,14 +148,14 @@ def resolve_canonical_header(raw_header):
 
 def _find_best_header_row(rows):
     """
-    Find index of header row from first 20 rows by counting known column matches.
+    Find index of header row from first 25 rows by counting known column matches.
     Returns (header_row_index, header_index_map).
     """
     best_idx = 0
     best_score = 0
     best_map = {}
 
-    for idx, row in enumerate(rows[:20]):
+    for idx, row in enumerate(rows[:25]):
         if not row:
             continue
         current_map = {}
@@ -172,6 +173,105 @@ def _find_best_header_row(rows):
 
     return best_idx, best_map
 
+# 1. HTML Table Parser for Web Exports
+class HTMLTableParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.rows = []
+        self.current_row = []
+        self.current_cell = []
+        self.in_cell = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('td', 'th'):
+            self.in_cell = True
+            self.current_cell = []
+        elif tag == 'tr':
+            self.current_row = []
+
+    def handle_endtag(self, tag):
+        if tag in ('td', 'th'):
+            self.in_cell = False
+            self.current_row.append("".join(self.current_cell).strip())
+        elif tag == 'tr':
+            if any(self.current_row):
+                self.rows.append(self.current_row)
+
+    def handle_data(self, data):
+        if self.in_cell:
+            self.current_cell.append(data)
+
+def _parse_html_table(bytes_data):
+    try:
+        content = bytes_data.decode('utf-8-sig', errors='replace')
+    except Exception:
+        content = bytes_data.decode('latin-1', errors='replace')
+
+    if '<table' not in content.lower() and '<tr' not in content.lower():
+        return []
+
+    parser = HTMLTableParser()
+    parser.feed(content)
+    all_raw_rows = parser.rows
+
+    if not all_raw_rows:
+        return []
+
+    header_idx, header_map = _find_best_header_row(all_raw_rows)
+    if not header_map:
+        return []
+
+    parsed_rows = []
+    for row in all_raw_rows[header_idx + 1:]:
+        row_dict = {}
+        for col_idx, canonical_col in header_map.items():
+            if col_idx < len(row):
+                row_dict[canonical_col] = str(row[col_idx]).strip() if row[col_idx] is not None else ""
+        if any(row_dict.values()):
+            parsed_rows.append(row_dict)
+
+    return parsed_rows
+
+# 2. Binary .xls BIFF8 Parser (xlrd)
+def _parse_xls_biff(bytes_data):
+    import xlrd
+    wb = xlrd.open_workbook(file_contents=bytes_data)
+    ws = wb.sheet_by_index(0)
+    
+    all_raw_rows = []
+    for r in range(ws.nrows):
+        row_vals = []
+        for c in range(ws.ncols):
+            val = ws.cell_value(r, c)
+            if ws.cell_type(r, c) == xlrd.XL_CELL_DATE:
+                try:
+                    dt = xlrd.xldate_as_tuple(val, wb.datemode)
+                    val = f"{dt[0]:04d}-{dt[1]:02d}-{dt[2]:02d} {dt[3]:02d}:{dt[4]:02d}:{dt[5]:02d}"
+                except Exception:
+                    pass
+            row_vals.append(str(val).strip() if val is not None else '')
+        if any(row_vals):
+            all_raw_rows.append(row_vals)
+
+    if not all_raw_rows:
+        return []
+
+    header_idx, header_map = _find_best_header_row(all_raw_rows)
+    if not header_map:
+        return []
+
+    parsed_rows = []
+    for row in all_raw_rows[header_idx + 1:]:
+        row_dict = {}
+        for col_idx, canonical_col in header_map.items():
+            if col_idx < len(row):
+                row_dict[canonical_col] = str(row[col_idx]).strip() if row[col_idx] is not None else ""
+        if any(row_dict.values()):
+            parsed_rows.append(row_dict)
+
+    return parsed_rows
+
+# 3. CSV / TSV Parser
 def _parse_csv(bytes_data):
     try:
         content = bytes_data.decode('utf-8-sig', errors='replace')
@@ -200,6 +300,7 @@ def _parse_csv(bytes_data):
 
     return parsed_rows
 
+# 4. Modern .xlsx Parser (openpyxl)
 def _parse_excel(bytes_data):
     wb = load_workbook(filename=BytesIO(bytes_data), data_only=True)
     ws = wb.active
@@ -229,24 +330,41 @@ def _parse_excel(bytes_data):
 
 def parse_his_file(file_name, file_bytes):
     """
-    Parse Excel (.xlsx) or CSV (.csv) file into a list of row dicts.
-    Robust against title rows, leading blank rows, column alias variations, and format mismatches.
+    Parse Excel (.xlsx / .xls), HTML .xls tables, XML Spreadsheet, or CSV (.csv) files.
+    Sequentially attempts all 4 parsing engines.
     """
     file_name_lower = file_name.lower()
 
-    if file_name_lower.endswith(('.xlsx', '.xls')):
-        try:
-            res = _parse_excel(file_bytes)
-            if res:
-                return res
-        except Exception:
-            pass
-        return _parse_csv(file_bytes)
-    else:
-        try:
-            res = _parse_csv(file_bytes)
-            if res:
-                return res
-        except Exception:
-            pass
-        return _parse_excel(file_bytes)
+    # Engine 1: HTML Table check (Very common for web HIS exports named .xls)
+    try:
+        res = _parse_html_table(file_bytes)
+        if res:
+            return res
+    except Exception:
+        pass
+
+    # Engine 2: OpenPyXL (.xlsx)
+    try:
+        res = _parse_excel(file_bytes)
+        if res:
+            return res
+    except Exception:
+        pass
+
+    # Engine 3: xlrd (Binary .xls BIFF8)
+    try:
+        res = _parse_xls_biff(file_bytes)
+        if res:
+            return res
+    except Exception:
+        pass
+
+    # Engine 4: Plain CSV / TSV text
+    try:
+        res = _parse_csv(file_bytes)
+        if res:
+            return res
+    except Exception:
+        pass
+
+    return []
