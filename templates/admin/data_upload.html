@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Centralized Admin Data Upload & Master Import - Hospital Credit Bill System{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Header Banner -->
+    <div class="glass-panel p-6 border-l-4 border-purple-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">ADMINISTRATIVE DATA MANAGEMENT</span>
+                <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    RESTRICTED ROLE
+                </span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-100 mt-1">Centralized Data Upload Module</h1>
+            <p class="text-xs text-slate-400 mt-0.5">Load historical and bulk master/transaction records into all system base tables with automated validation and dependency checking.</p>
+        </div>
+
+        <div>
+            <a href="{{ url_for('main.dashboard') }}" class="btn-secondary text-xs">
+                &larr; Return to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Upload Panel & Dynamic Template Generator -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Form Box -->
+        <div class="lg:col-span-2 glass-panel p-6 space-y-6">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-3">
+                <span>1. File Selection & Validation</span>
+                <span class="text-xs text-slate-400 font-normal">Supports .xlsx, .xls, .csv</span>
+            </h2>
+
+            <form method="POST" action="{{ url_for('admin_upload.validate_file') }}" enctype="multipart/form-data" class="space-y-5">
+                
+                <!-- Category Selector -->
+                <div>
+                    <label for="data_category" class="form-label font-bold text-slate-200">Select Target Data Category / Table</label>
+                    <div class="flex gap-2">
+                        <select id="data_category" name="data_category" required onchange="updateTemplateLinks()" class="form-input flex-1 font-semibold text-xs">
+                            <option value="" disabled selected>-- Select Target Master or Base Transaction Table --</option>
+                            <optgroup label="Master Data Uploads">
+                                <option value="hospital_units">Hospital / Unit Master</option>
+                                <option value="payers">Payer Master</option>
+                                <option value="hospital_payers">Hospital-Payer / Payer-Pair Master (Incl. Monthly Submission)</option>
+                                <option value="patients">Patient Master</option>
+                                <option value="doctor_master">Doctor Master</option>
+                            </optgroup>
+                            <optgroup label="Base / Transaction Data Uploads">
+                                <option value="bills">Bills / Base Transactions</option>
+                                <option value="bill_verifications">Bill Verification History</option>
+                                <option value="bill_dispatch">Dispatch Details</option>
+                                <option value="bill_queries">Payer Query Details</option>
+                                <option value="bill_payments">Bill Payments & Settlement Details</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Template Download Actions -->
+                <div id="templateDownloadContainer" class="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Download Data Template</div>
+                        <div class="text-[10px] text-slate-400">Get standard format template with pre-filled header columns and sample rows.</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a id="btnTplXlsx" href="#" class="btn-secondary text-[10px] py-1 px-2.5 opacity-50 pointer-events-none">
+                            📥 Excel (.xlsx)
+                        </a>
+                        <a id="btnTplCsv" href="#" class="btn-secondary text-[10px] py-1 px-2.5 opacity-50 pointer-events-none">
+                            📄 CSV (.csv)
+                        </a>
+                    </div>
+                </div>
+
+                <!-- File Upload Field -->
+                <div>
+                    <label for="upload_file" class="form-label font-bold text-slate-200">Select File to Upload</label>
+                    <input type="file" id="upload_file" name="upload_file" required accept=".xlsx,.xls,.csv" class="form-input text-xs">
+                </div>
+
+                <!-- Action Button -->
+                <button type="submit" class="btn-primary w-full py-2.5 bg-purple-600 hover:bg-purple-700 font-bold text-xs">
+                    ⚡ Validate & Preview Upload File
+                </button>
+            </form>
+        </div>
+
+        <!-- Dependency Rules Card -->
+        <div class="glass-panel p-6 space-y-4">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider border-b border-slate-800 pb-3">
+                Master Dependency Chain
+            </h2>
+            <div class="text-xs text-slate-300 space-y-2">
+                <p>Upload historical records in the following recommended order to prevent dependency errors:</p>
+                <ol class="list-decimal list-inside space-y-1.5 font-mono text-[11px] text-slate-400">
+                    <li class="text-indigo-400">Hospital / Unit Master</li>
+                    <li class="text-indigo-400">Payer Master</li>
+                    <li class="text-amber-400 font-bold">Hospital-Payer / Payer-Pair Master</li>
+                    <li class="text-indigo-400">Patient & Doctor Masters</li>
+                    <li class="text-sky-400 font-bold">Bills & Base Transactions</li>
+                    <li class="text-emerald-400">Dispatch / Query / Payment Logs</li>
+                </ol>
+            </div>
+            <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300">
+                <span class="font-bold">Payer-Pair Rule:</span> Specify <code class="font-mono">monthly_submission = Yes</code> to set TAT to start on the 1st of the following month.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Upload Preview Panel (Visible after Validation) -->
+    {% if preview_data %}
+    <div class="glass-panel p-6 border-l-4 border-emerald-500 space-y-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">VALIDATION PREVIEW</span>
+                <h2 class="text-lg font-black text-slate-100">Upload Summary: {{ preview_data.category_label or preview_data.data_category }}</h2>
+                <p class="text-xs text-slate-400">File: <span class="font-mono text-slate-200">{{ preview_data.filename }}</span></p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-3">
+                <form method="POST" action="{{ url_for('admin_upload.cancel_preview') }}">
+                    <button type="submit" class="btn-secondary text-xs">
+                        ✕ Cancel Preview
+                    </button>
+                </form>
+
+                {% if preview_data.valid_count > 0 %}
+                <form method="POST" action="{{ url_for('admin_upload.import_data') }}">
+                    <button type="submit" class="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 px-4 font-extrabold">
+                        ✓ Import {{ preview_data.valid_count }} Record(s) into Database
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Preview Metrics Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div class="text-xs font-bold text-slate-400">Total Records</div>
+                <div class="text-2xl font-black text-slate-100 mt-1">{{ preview_data.total_count }}</div>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-emerald-500/30">
+                <div class="text-xs font-bold text-emerald-400">Valid Records</div>
+                <div class="text-2xl font-black text-emerald-400 mt-1">{{ preview_data.valid_count }}</div>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-amber-500/30">
+                <div class="text-xs font-bold text-amber-400">Duplicate Keys</div>
+                <div class="text-2xl font-black text-amber-400 mt-1">{{ preview_data.duplicate_count }}</div>
+            </div>
+            <div class="p-4 rounded-xl bg-slate-950/60 border border-rose-500/30">
+                <div class="text-xs font-bold text-rose-400">Error Records</div>
+                <div class="text-2xl font-black text-rose-400 mt-1">{{ preview_data.error_count }}</div>
+            </div>
+        </div>
+
+        <!-- Error List Details -->
+        {% if preview_data.errors %}
+        <div class="space-y-3 pt-2">
+            <h3 class="text-xs font-bold text-rose-400 uppercase tracking-wider">Validation Errors Identified ({{ preview_data.errors|length }})</h3>
+            <div class="max-h-60 overflow-y-auto rounded-xl border border-rose-500/20 bg-slate-950/80 p-3 space-y-2 text-xs">
+                {% for err in preview_data.errors %}
+                <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 flex justify-between gap-4">
+                    <span class="font-bold">Row #{{ err.row }}:</span>
+                    <span class="flex-1">{{ err.reason }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Upload History Table -->
+    <div class="glass-panel p-6 space-y-4">
+        <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider border-b border-slate-800 pb-3">
+            Admin Upload History & Audit Log (Recent 50)
+        </h2>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
+                        <th class="pb-3">Date & Time</th>
+                        <th class="pb-3">Category</th>
+                        <th class="pb-3">File Name</th>
+                        <th class="pb-3">Total</th>
+                        <th class="pb-3">Success</th>
+                        <th class="pb-3">Failed</th>
+                        <th class="pb-3">Uploaded By</th>
+                        <th class="pb-3 text-right">Error Report</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60">
+                    {% for h in history_logs %}
+                    <tr>
+                        <td class="py-3 font-mono text-slate-300">{{ h.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="py-3 font-bold text-purple-400">{{ h.data_category }}</td>
+                        <td class="py-3 font-mono text-slate-200">{{ h.file_name }}</td>
+                        <td class="py-3 font-bold text-slate-200">{{ h.total_records }}</td>
+                        <td class="py-3 font-bold text-emerald-400">{{ h.success_records }}</td>
+                        <td class="py-3 font-bold {% if h.failed_records > 0 %}text-rose-400{% else %}text-slate-400{% endif %}">
+                            {{ h.failed_records }}
+                        </td>
+                        <td class="py-3 font-medium text-slate-300">#{{ h.uploaded_by }}</td>
+                        <td class="py-3 text-right">
+                            {% if h.failed_records > 0 %}
+                            <a href="{{ url_for('admin_upload.download_errors', history_id=h.history_id) }}" class="btn-secondary text-[10px] py-1 px-2.5 text-rose-400">
+                                📥 Error Log
+                            </a>
+                            {% else %}
+                            <span class="text-[10px] text-emerald-400 font-bold">✓ Clean</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="py-6 text-center text-slate-500 italic">No admin upload history records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function updateTemplateLinks() {
+        var cat = document.getElementById('data_category').value;
+        var btnXlsx = document.getElementById('btnTplXlsx');
+        var btnCsv = document.getElementById('btnTplCsv');
+        
+        if (cat) {
+            btnXlsx.href = "{{ url_for('admin_upload.download_template', category_key='CAT_PLACEHOLDER', fmt='xlsx') }}".replace('CAT_PLACEHOLDER', cat);
+            btnCsv.href = "{{ url_for('admin_upload.download_template', category_key='CAT_PLACEHOLDER', fmt='csv') }}".replace('CAT_PLACEHOLDER', cat);
+            
+            btnXlsx.classList.remove('opacity-50', 'pointer-events-none');
+            btnCsv.classList.remove('opacity-50', 'pointer-events-none');
+        }
+    }
+</script>
+{% endblock %}

@@ -284,7 +284,9 @@
                     <button class="px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center gap-1 text-purple-400 font-bold">
                         🛡️ Admin ▾
                     </button>
-                    <div class="absolute right-0 top-full mt-1 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                    <div class="absolute right-0 top-full mt-1 w-52 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50">
+                        <a href="{{ url_for('admin_upload.data_upload') }}" class="block px-4 py-2 hover:bg-slate-800 text-purple-300 font-bold hover:text-purple-400">⚡ Data Upload Module</a>
+                        <div class="border-t border-slate-800 my-1"></div>
                         <a href="{{ url_for('users.users') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-purple-400">User Management</a>
                         <a href="{{ url_for('users.audit_logs') }}" class="block px-4 py-2 hover:bg-slate-800 text-slate-300 hover:text-purple-400">Audit Logs</a>
                     </div>

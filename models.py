@@ -516,3 +516,19 @@ class EmailIngestionLog(db.Model):
     processing_status = db.Column(db.String(50), default='PROCESSED')
     batch_id = db.Column(db.Integer, db.ForeignKey('sync_batches.batch_id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class AdminUploadHistory(db.Model):
+    __tablename__ = 'admin_upload_history'
+    history_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    data_category = db.Column(db.String(100), nullable=False, index=True)
+    file_name = db.Column(db.String(255), nullable=False)
+    total_records = db.Column(db.Integer, default=0)
+    success_records = db.Column(db.Integer, default=0)
+    failed_records = db.Column(db.Integer, default=0)
+    duplicate_records = db.Column(db.Integer, default=0)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    error_summary_json = db.Column(db.Text, default='[]')
+
+    uploader = db.relationship('User', foreign_keys=[uploaded_by])
+

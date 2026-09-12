@@ -13,6 +13,7 @@ from routes.encounter_routes import encounter_bp
 from routes.billing_routes import billing_bp
 from routes.report_routes import report_bp
 from routes.his_sync_routes import his_sync_bp
+from routes.admin_upload_routes import admin_upload_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -29,6 +30,7 @@ app.register_blueprint(encounter_bp)
 app.register_blueprint(billing_bp)
 app.register_blueprint(report_bp)
 app.register_blueprint(his_sync_bp)
+app.register_blueprint(admin_upload_bp)
 
 # Context Processor for Templates
 @app.context_processor
