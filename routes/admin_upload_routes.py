@@ -148,3 +148,4 @@ def download_errors(history_id):
         mimetype='text/csv',
         headers={"Content-Disposition": f"attachment;filename=ErrorReport_UploadBatch_{history_id}.csv"}
     )
+

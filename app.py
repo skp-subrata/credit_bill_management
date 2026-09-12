@@ -53,7 +53,8 @@ def inject_global_context():
     return dict(
         current_unit=current_unit,
         all_active_units=all_units,
-        request_endpoint=request.endpoint or ''
+        request_endpoint=request.endpoint or '',
+        app_version=Config.APP_VERSION
     )
 
 # Error Handlers
