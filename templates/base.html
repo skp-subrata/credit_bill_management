@@ -6,6 +6,12 @@
     <title>{% block title %}Hospital Credit Billing Management System{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
+        (function() {
+            var savedTheme = localStorage.getItem('app_theme') || 'dark';
+            document.documentElement.className = 'theme-' + savedTheme + ' ' + (savedTheme === 'light' ? 'light' : 'dark');
+        })();
+    </script>
+    <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -36,13 +42,110 @@
                 @apply inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-semibold px-4 py-2 transition-all duration-200;
             }
         }
-        body {
+
+        /* --- MULTI-THEME CUSTOMIZATIONS --- */
+        /* Dark Theme (Default) */
+        html.theme-dark body, body:not([class*="theme-"]) {
             background-color: #0b0f19;
             background-image: 
                 radial-gradient(at 0% 0%, rgba(30, 27, 75, 0.4) 0px, transparent 50%),
                 radial-gradient(at 100% 0%, rgba(15, 23, 42, 0.6) 0px, transparent 50%),
                 radial-gradient(at 50% 100%, rgba(17, 24, 39, 0.8) 0px, transparent 50%);
             background-attachment: fixed;
+            color: #f1f5f9;
+        }
+
+        /* Light Theme */
+        html.theme-light body {
+            background-color: #f8fafc;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.5) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(241, 245, 249, 0.8) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: #0f172a;
+        }
+        html.theme-light .glass-panel {
+            background-color: rgba(255, 255, 255, 0.92) !important;
+            border-color: #cbd5e1 !important;
+            color: #0f172a !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+        }
+        html.theme-light .glass-nav {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+            border-color: #e2e8f0 !important;
+            color: #0f172a !important;
+        }
+        html.theme-light .text-slate-100, 
+        html.theme-light .text-slate-200, 
+        html.theme-light .text-slate-300 {
+            color: #1e293b !important;
+        }
+        html.theme-light .text-slate-400 {
+            color: #64748b !important;
+        }
+        html.theme-light .bg-slate-900,
+        html.theme-light .bg-slate-950\/60,
+        html.theme-light .bg-slate-950\/80 {
+            background-color: #ffffff !important;
+            border-color: #cbd5e1 !important;
+        }
+        html.theme-light .bg-slate-800 {
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
+        }
+
+        /* Slate Gray Theme */
+        html.theme-gray body {
+            background-color: #1e293b;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(51, 65, 85, 0.5) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(15, 23, 42, 0.7) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: #f8fafc;
+        }
+        html.theme-gray .glass-panel {
+            background-color: rgba(51, 65, 85, 0.85) !important;
+            border-color: #475569 !important;
+        }
+        html.theme-gray .glass-nav {
+            background-color: rgba(30, 41, 59, 0.95) !important;
+            border-color: #475569 !important;
+        }
+
+        /* Emerald Green Theme (Hospital/Clinical) */
+        html.theme-emerald body {
+            background-color: #022c22;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(6, 78, 59, 0.6) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(4, 47, 46, 0.8) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: #ecfdf5;
+        }
+        html.theme-emerald .glass-panel {
+            background-color: rgba(6, 78, 59, 0.75) !important;
+            border-color: #047857 !important;
+        }
+        html.theme-emerald .glass-nav {
+            background-color: rgba(2, 44, 34, 0.95) !important;
+            border-color: #047857 !important;
+        }
+
+        /* Royal Indigo Theme */
+        html.theme-indigo body {
+            background-color: #1e1b4b;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(67, 56, 202, 0.5) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(30, 27, 75, 0.8) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: #e0e7ff;
+        }
+        html.theme-indigo .glass-panel {
+            background-color: rgba(49, 46, 129, 0.75) !important;
+            border-color: #4338ca !important;
+        }
+        html.theme-indigo .glass-nav {
+            background-color: rgba(30, 27, 75, 0.95) !important;
+            border-color: #4338ca !important;
         }
     </style>
 </head>
@@ -137,7 +240,7 @@
                 {% endif %}
             </nav>
 
-            <!-- Unit Selector & User Info -->
+            <!-- Unit Selector, Theme Switcher & User Info -->
             <div class="flex items-center gap-3">
                 {% if all_active_units %}
                 <form method="POST" action="{{ url_for('auth.select_unit', unit_id=0) }}" id="unitSelectForm" class="hidden sm:block">
@@ -152,6 +255,37 @@
                 </form>
                 {% endif %}
 
+                <!-- Theme Switcher Dropdown -->
+                <div class="relative group">
+                    <button class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm">
+                        <span>🎨</span>
+                        <span id="themeCurrentLabel" class="hidden sm:inline">Theme</span>
+                        <span class="text-[10px]">▾</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1 w-44 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50 text-xs">
+                        <button onclick="setAppTheme('dark')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>🌙 Dark</span>
+                            <span class="text-[10px] text-indigo-400 font-bold">Default</span>
+                        </button>
+                        <button onclick="setAppTheme('light')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>☀️ Light</span>
+                            <span class="text-[10px] text-sky-400 font-bold">Clean</span>
+                        </button>
+                        <button onclick="setAppTheme('gray')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>🔘 Slate Gray</span>
+                            <span class="text-[10px] text-slate-400 font-bold">Neutral</span>
+                        </button>
+                        <button onclick="setAppTheme('emerald')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>🌿 Emerald</span>
+                            <span class="text-[10px] text-emerald-400 font-bold">Health</span>
+                        </button>
+                        <button onclick="setAppTheme('indigo')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>👑 Royal Indigo</span>
+                            <span class="text-[10px] text-purple-400 font-bold">Cyber</span>
+                        </button>
+                    </div>
+                </div>
+
                 <div class="text-right text-xs hidden md:block">
                     <div class="font-bold text-slate-100">{{ session.get('name') }}</div>
                     <div class="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">{{ session.get('role_name') or session.get('role_code') }}</div>
@@ -163,6 +297,37 @@
             </div>
             {% else %}
             <div class="flex items-center gap-3">
+                <!-- Theme Switcher Dropdown (Logged Out) -->
+                <div class="relative group">
+                    <button class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm">
+                        <span>🎨</span>
+                        <span id="themeCurrentLabel" class="hidden sm:inline">Theme</span>
+                        <span class="text-[10px]">▾</span>
+                    </button>
+                    <div class="absolute right-0 top-full mt-1 w-44 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1 hidden group-hover:block z-50 text-xs">
+                        <button onclick="setAppTheme('dark')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>🌙 Dark</span>
+                            <span class="text-[10px] text-indigo-400 font-bold">Default</span>
+                        </button>
+                        <button onclick="setAppTheme('light')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>☀️ Light</span>
+                            <span class="text-[10px] text-sky-400 font-bold">Clean</span>
+                        </button>
+                        <button onclick="setAppTheme('gray')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>🔘 Slate Gray</span>
+                            <span class="text-[10px] text-slate-400 font-bold">Neutral</span>
+                        </button>
+                        <button onclick="setAppTheme('emerald')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>🌿 Emerald</span>
+                            <span class="text-[10px] text-emerald-400 font-bold">Health</span>
+                        </button>
+                        <button onclick="setAppTheme('indigo')" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 flex items-center justify-between">
+                            <span>👑 Royal Indigo</span>
+                            <span class="text-[10px] text-purple-400 font-bold">Cyber</span>
+                        </button>
+                    </div>
+                </div>
+
                 <a href="{{ url_for('auth.login') }}" class="btn-primary text-xs py-2 px-4">Sign In</a>
             </div>
             {% endif %}
@@ -206,5 +371,27 @@
         Hospital Credit Billing Management System &copy; 2026 | Enterprise HIS Data Integration & Sync Engine
     </footer>
 
+    <script>
+        function setAppTheme(themeName) {
+            localStorage.setItem('app_theme', themeName);
+            document.documentElement.className = 'theme-' + themeName + ' ' + (themeName === 'light' ? 'light' : 'dark');
+            var labelMap = {
+                'dark': '🌙 Dark',
+                'light': '☀️ Light',
+                'gray': '🔘 Gray',
+                'emerald': '🌿 Emerald',
+                'indigo': '👑 Royal'
+            };
+            var labels = document.querySelectorAll('#themeCurrentLabel');
+            labels.forEach(function(lbl) {
+                lbl.innerText = labelMap[themeName] || 'Theme';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var current = localStorage.getItem('app_theme') || 'dark';
+            setAppTheme(current);
+        });
+    </script>
 </body>
 </html>
