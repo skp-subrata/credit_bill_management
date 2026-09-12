@@ -43,7 +43,7 @@
             }
         }
 
-        /* --- MULTI-THEME CUSTOMIZATIONS --- */
+        /* --- MULTI-THEME CUSTOMIZATIONS & AUTOMATIC HIGH CONTRAST --- */
         /* Dark Theme (Default) */
         html.theme-dark body, body:not([class*="theme-"]) {
             background-color: #0b0f19;
@@ -55,44 +55,81 @@
             color: #f1f5f9;
         }
 
-        /* Light Theme */
+        /* Light Theme (Clinical Clean) - Auto High Contrast Overrides */
         html.theme-light body {
-            background-color: #f8fafc;
+            background-color: #f1f5f9 !important;
             background-image: 
-                radial-gradient(at 0% 0%, rgba(224, 231, 255, 0.5) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(241, 245, 249, 0.8) 0px, transparent 50%);
+                radial-gradient(at 0% 0%, rgba(219, 234, 254, 0.6) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(241, 245, 249, 0.8) 0px, transparent 50%) !important;
             background-attachment: fixed;
-            color: #0f172a;
+            color: #0f172a !important;
         }
-        html.theme-light .glass-panel {
-            background-color: rgba(255, 255, 255, 0.92) !important;
+        html.theme-light .glass-panel,
+        html.theme-light .glass-nav {
+            background-color: #ffffff !important;
             border-color: #cbd5e1 !important;
             color: #0f172a !important;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
-        }
-        html.theme-light .glass-nav {
-            background-color: rgba(255, 255, 255, 0.95) !important;
-            border-color: #e2e8f0 !important;
-            color: #0f172a !important;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
         }
         html.theme-light .text-slate-100, 
         html.theme-light .text-slate-200, 
-        html.theme-light .text-slate-300 {
-            color: #1e293b !important;
+        html.theme-light .text-slate-300,
+        html.theme-light .text-white,
+        html.theme-light h1, html.theme-light h2, html.theme-light h3, html.theme-light h4, html.theme-light h5, html.theme-light h6 {
+            color: #0f172a !important;
         }
-        html.theme-light .text-slate-400 {
-            color: #64748b !important;
+        html.theme-light .text-slate-400,
+        html.theme-light .text-slate-500 {
+            color: #475569 !important;
         }
         html.theme-light .bg-slate-900,
         html.theme-light .bg-slate-950\/60,
-        html.theme-light .bg-slate-950\/80 {
-            background-color: #ffffff !important;
+        html.theme-light .bg-slate-950\/80,
+        html.theme-light .bg-slate-950 {
+            background-color: #f8fafc !important;
             border-color: #cbd5e1 !important;
-        }
-        html.theme-light .bg-slate-800 {
-            background-color: #f1f5f9 !important;
             color: #0f172a !important;
         }
+        html.theme-light .bg-slate-800,
+        html.theme-light .bg-slate-800\/80 {
+            background-color: #e2e8f0 !important;
+            color: #0f172a !important;
+        }
+        html.theme-light .border-slate-800,
+        html.theme-light .border-slate-700 {
+            border-color: #cbd5e1 !important;
+        }
+        /* Form controls & inputs in light theme */
+        html.theme-light input[type="text"],
+        html.theme-light input[type="number"],
+        html.theme-light input[type="date"],
+        html.theme-light input[type="file"],
+        html.theme-light select,
+        html.theme-light textarea,
+        html.theme-light .form-input {
+            background-color: #ffffff !important;
+            border-color: #94a3b8 !important;
+            color: #0f172a !important;
+        }
+        html.theme-light input::placeholder,
+        html.theme-light textarea::placeholder {
+            color: #64748b !important;
+        }
+        html.theme-light .btn-secondary {
+            background-color: #e2e8f0 !important;
+            border-color: #cbd5e1 !important;
+            color: #1e293b !important;
+        }
+        html.theme-light .btn-secondary:hover {
+            background-color: #cbd5e1 !important;
+        }
+        /* High Contrast Badge Accent Colors for Light Mode */
+        html.theme-light .text-indigo-400 { color: #4f46e5 !important; }
+        html.theme-light .text-emerald-400 { color: #059669 !important; }
+        html.theme-light .text-rose-400 { color: #e11d48 !important; }
+        html.theme-light .text-amber-400 { color: #d97706 !important; }
+        html.theme-light .text-sky-400 { color: #0284c7 !important; }
+        html.theme-light .text-purple-400 { color: #7c3aed !important; }
 
         /* Slate Gray Theme */
         html.theme-gray body {
@@ -109,6 +146,11 @@
         }
         html.theme-gray .glass-nav {
             background-color: rgba(30, 41, 59, 0.95) !important;
+            border-color: #475569 !important;
+        }
+        html.theme-gray .bg-slate-900,
+        html.theme-gray .bg-slate-950\/60 {
+            background-color: #334155 !important;
             border-color: #475569 !important;
         }
 
@@ -129,6 +171,11 @@
             background-color: rgba(2, 44, 34, 0.95) !important;
             border-color: #047857 !important;
         }
+        html.theme-emerald .bg-slate-900,
+        html.theme-emerald .bg-slate-950\/60 {
+            background-color: #064e3b !important;
+            border-color: #047857 !important;
+        }
 
         /* Royal Indigo Theme */
         html.theme-indigo body {
@@ -145,6 +192,11 @@
         }
         html.theme-indigo .glass-nav {
             background-color: rgba(30, 27, 75, 0.95) !important;
+            border-color: #4338ca !important;
+        }
+        html.theme-indigo .bg-slate-900,
+        html.theme-indigo .bg-slate-950\/60 {
+            background-color: #312e81 !important;
             border-color: #4338ca !important;
         }
     </style>
