@@ -81,6 +81,32 @@ with app.app_context():
             if hp_columns and 'monthly_submission' not in hp_columns:
                 conn.execute(db.text("ALTER TABLE hospital_payers ADD COLUMN monthly_submission BOOLEAN DEFAULT 0"))
                 conn.commit()
+
+            # Check bills for delay fields
+            b_col_rows = conn.execute(db.text("PRAGMA table_info(bills)")).fetchall()
+            b_columns = [r[1] for r in b_col_rows] if b_col_rows else []
+            if b_columns:
+                if 'dispatch_sla_due_date' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN dispatch_sla_due_date VARCHAR(20)"))
+                if 'dispatch_delay_days' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN dispatch_delay_days INTEGER DEFAULT 0"))
+                if 'dispatch_delay_flag' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN dispatch_delay_flag BOOLEAN DEFAULT 0"))
+                if 'dispatch_delayed_completed' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN dispatch_delayed_completed BOOLEAN DEFAULT 0"))
+                if 'dispatch_delay_status' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN dispatch_delay_status VARCHAR(50) DEFAULT 'PENDING'"))
+                if 'query_sla_due_date' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN query_sla_due_date VARCHAR(20)"))
+                if 'query_delay_days' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN query_delay_days INTEGER DEFAULT 0"))
+                if 'query_delay_flag' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN query_delay_flag BOOLEAN DEFAULT 0"))
+                if 'query_delayed_completed' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN query_delayed_completed BOOLEAN DEFAULT 0"))
+                if 'query_delay_status' not in b_columns:
+                    conn.execute(db.text("ALTER TABLE bills ADD COLUMN query_delay_status VARCHAR(50) DEFAULT 'NOT_APPLICABLE'"))
+                conn.commit()
     except Exception:
         pass
 

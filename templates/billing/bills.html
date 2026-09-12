@@ -89,6 +89,8 @@
                             <th class="pb-3">TAT SLA (Start / Due)</th>
                             <th class="pb-3">Amount</th>
                             <th class="pb-3">Status</th>
+                            <th class="pb-3">Dispatch Delay</th>
+                            <th class="pb-3">Query Delay</th>
                             <th class="pb-3 text-right">Action</th>
                         </tr>
                     </thead>
@@ -136,6 +138,42 @@
                                     {% endif %}">
                                     {{ b.bill_status }}
                                 </span>
+                            </td>
+                            <td class="py-3">
+                                {% if b.dispatch_delay_status == 'DISPATCHED_LATE' %}
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                        🔴 Dispatched Late – {{ b.dispatch_delay_days }}d
+                                    </span>
+                                {% elif b.dispatch_delay_status == 'DELAYED' %}
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">
+                                        🔴 Dispatch Delayed – {{ b.dispatch_delay_days }}d
+                                    </span>
+                                {% elif b.dispatch_delay_status == 'ON_TIME' %}
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                        🟢 On Time
+                                    </span>
+                                {% else %}
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                        🟢 Within SLA
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3">
+                                {% if b.query_delay_status == 'QUERY_RESOLVED_LATE' %}
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                        🔴 Query Resolved Late – {{ b.query_delay_days }}d
+                                    </span>
+                                {% elif b.query_delay_status == 'QUERY_DELAYED' %}
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">
+                                        🔴 Query Delayed – {{ b.query_delay_days }}d
+                                    </span>
+                                {% elif b.query_delay_status == 'ON_TIME' or b.query_delay_status == 'PENDING' %}
+                                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                        🟢 Within SLA
+                                    </span>
+                                {% else %}
+                                    <span class="text-[10px] text-slate-500">—</span>
+                                {% endif %}
                             </td>
                             <td class="py-3 text-right">
                                 <a href="{{ url_for('billing.bill_detail', bill_id=b.bill_id) }}" class="btn-secondary text-[10px] py-1 px-2.5">

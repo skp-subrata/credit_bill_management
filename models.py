@@ -209,6 +209,20 @@ class Bill(db.Model):
     approved_amount = db.Column(db.Float, default=0.0)
     outstanding_amount = db.Column(db.Float, nullable=False, default=0.0)
     bill_status = db.Column(db.String(50), default='GENERATED', index=True) 
+
+    # Focused Delay Tracking Fields (Dispatch & Query Resolution)
+    dispatch_sla_due_date = db.Column(db.String(20), nullable=True)
+    dispatch_delay_days = db.Column(db.Integer, default=0)
+    dispatch_delay_flag = db.Column(db.Boolean, default=False)
+    dispatch_delayed_completed = db.Column(db.Boolean, default=False)
+    dispatch_delay_status = db.Column(db.String(50), default='PENDING', index=True)
+
+    query_sla_due_date = db.Column(db.String(20), nullable=True)
+    query_delay_days = db.Column(db.Integer, default=0)
+    query_delay_flag = db.Column(db.Boolean, default=False)
+    query_delayed_completed = db.Column(db.Boolean, default=False)
+    query_delay_status = db.Column(db.String(50), default='NOT_APPLICABLE', index=True)
+
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     updated_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -270,8 +284,13 @@ class Bill(db.Model):
         return 'GENERATED'
 
     def update_lifecycle_status(self):
-        """Updates and persists self.bill_status based on the highest completed lifecycle stage."""
+        """Updates and persists self.bill_status and delay metrics based on the highest completed lifecycle stage and SLA due dates."""
         self.bill_status = self.calculate_lifecycle_status()
+        try:
+            from utils.tat import calculate_bill_delay_metrics
+            calculate_bill_delay_metrics(self)
+        except Exception:
+            pass
         return self.bill_status
 
 class BillVerification(db.Model):
