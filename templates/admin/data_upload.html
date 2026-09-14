@@ -147,7 +147,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
             <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800">
                 <div class="text-xs font-bold text-slate-400">Total Records</div>
-                <div class="text-2xl font-black text-slate-100 mt-1">{{ preview_data.total_count }}</div>
+                <div class="text-2xl font-black text-slate-100 mt-1">{{ preview_data.total_records if preview_data.total_records is not none else preview_data.total_count }}</div>
             </div>
             <div class="p-4 rounded-xl bg-slate-950/60 border border-emerald-500/30">
                 <div class="text-xs font-bold text-emerald-400">Valid Records</div>

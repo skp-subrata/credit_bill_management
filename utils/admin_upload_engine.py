@@ -347,6 +347,7 @@ def validate_admin_upload(category_key, file_storage):
         'category_label': cfg['label'],
         'filename': filename,
         'total_records': len(rows),
+        'total_count': len(rows),
         'valid_count': len(valid_records),
         'error_count': len(error_records),
         'duplicate_count': len(rows) - len(valid_records) - len(error_records),
