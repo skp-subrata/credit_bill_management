@@ -192,7 +192,7 @@ class OPEpisode(db.Model):
 class Bill(db.Model):
     __tablename__ = 'bills'
     bill_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    bill_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    bill_number = db.Column(db.String(50), unique=False, nullable=False, index=True)
     unit_id = db.Column(db.Integer, db.ForeignKey('hospital_units.unit_id'), nullable=False, index=True)
     patient_id = db.Column(db.Integer, db.ForeignKey('patients.patient_id'), nullable=False, index=True)
     patient_name_snapshot = db.Column(db.String(150), nullable=False)

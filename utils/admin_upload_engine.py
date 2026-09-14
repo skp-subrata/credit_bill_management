@@ -198,7 +198,7 @@ DATA_CATEGORIES_CONFIG = {
             ['BILL-2026-9001', 'MH-BLR-01', 'UHID-9001001', 'IP', 'CREDIT', 'IP-9001', 'PAY-STAR-01', '2026-09-01', 45000.00, 45000.00],
             ['BILL-2026-9002', 'MH-BLR-01', 'UHID-9001002', 'IP', 'CREDIT', 'IP-9002', 'PAY-CGHS-01', '2026-09-05', 28000.00, 28000.00]
         ],
-        'key_fields': ['bill_number']
+        'key_fields': ['bill_number', 'payer_code']
     },
     'bill_verifications': {
         'label': 'Bill Verification History',
@@ -301,7 +301,13 @@ def validate_admin_upload(category_key, file_storage):
             cleaned_row[canonical_k] = str(v).strip()
 
         # Check mandatory key fields
-        missing_keys = [k for k in key_fields if not cleaned_row.get(k)]
+        if category_key == 'bills':
+            missing_keys = [k for k in ['bill_number'] if not cleaned_row.get(k)]
+            if cleaned_row.get('bill_type', 'CREDIT').upper() == 'CREDIT' and not cleaned_row.get('payer_code'):
+                missing_keys.append('payer_code')
+        else:
+            missing_keys = [k for k in key_fields if not cleaned_row.get(k)]
+
         if missing_keys:
             error_records.append({
                 'row': idx,
@@ -311,7 +317,7 @@ def validate_admin_upload(category_key, file_storage):
             continue
 
         # Check in-file duplicates
-        key_tuple = tuple(cleaned_row.get(k) for k in key_fields)
+        key_tuple = tuple(cleaned_row.get(k, '') for k in key_fields)
         if key_tuple in seen_keys:
             error_records.append({
                 'row': idx,
@@ -467,7 +473,13 @@ def execute_admin_import(category_key, valid_records, user_id, filename):
                 if unit and payer:
                     hp = HospitalPayer.query.filter_by(unit_id=unit.unit_id, payer_id=payer.payer_id).first()
 
-                b = Bill.query.filter_by(bill_number=row['bill_number']).first() or Bill(bill_number=row['bill_number'])
+                b = None
+                if payer:
+                    b = Bill.query.filter_by(bill_number=row['bill_number'], payer_id=payer.payer_id).first()
+                if not b:
+                    b = Bill.query.filter_by(bill_number=row['bill_number']).first()
+                if not b:
+                    b = Bill(bill_number=row['bill_number'])
                 b.unit_id = unit.unit_id
                 b.patient_id = patient.patient_id
                 b.patient_name_snapshot = patient.patient_name
