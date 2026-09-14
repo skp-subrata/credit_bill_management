@@ -252,8 +252,13 @@ class Bill(db.Model):
         6. PAID (Full payment settled)
         7. CLOSED (Formally closed/archived)
         """
-        if self.bill_status == 'CLOSED':
-            return 'CLOSED'
+        if self.bill_status in ('CLOSED', 'CANCELLED'):
+            return self.bill_status
+
+        # Check for CANCELLED verification
+        has_cancelled_verification = any(v.verification_status in ('CANCELLED', 'BILL_CANCELLED') for v in (self.verifications or []))
+        if has_cancelled_verification:
+            return 'CANCELLED'
 
         # Stage 6: PAID (full settlement)
         if self.payments and len(self.payments) > 0 and self.outstanding_amount <= 0:
@@ -286,6 +291,10 @@ class Bill(db.Model):
     @property
     def is_verified(self):
         """Returns True if the bill has been verified or is at/past the VERIFIED lifecycle stage."""
+        if self.bill_status == 'CANCELLED':
+            return False
+        if any(v.verification_status in ('CANCELLED', 'BILL_CANCELLED') for v in (self.verifications or [])):
+            return False
         if any(v.verification_status == 'VERIFIED' for v in (self.verifications or [])):
             return True
         return self.bill_status in ('VERIFIED', 'DISPATCHED', 'QUERIED', 'PARTIALLY_PAID', 'PAID', 'CLOSED')

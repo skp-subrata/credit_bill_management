@@ -158,32 +158,38 @@ def calculate_bill_delay_metrics(bill, current_date=None):
     dispatch_delay_flag = False
     dispatch_delayed_completed = False
 
-    dispatches = getattr(bill, 'dispatches', []) or []
-    if dispatches and len(dispatches) > 0:
-        actual_disp_str = dispatches[0].dispatch_date
-        actual_disp_d = parse_date_safe(actual_disp_str).date() if actual_disp_str else current_d
-        
-        if actual_disp_d > dispatch_due_d:
-            dispatch_delay_days = (actual_disp_d - dispatch_due_d).days
-            dispatch_delay_flag = True
-            dispatch_delayed_completed = True
-            dispatch_delay_status = 'DISPATCHED_LATE'
-        else:
-            dispatch_delay_days = 0
-            dispatch_delay_flag = False
-            dispatch_delayed_completed = False
-            dispatch_delay_status = 'ON_TIME'
+    if getattr(bill, 'bill_status', '') in ('CANCELLED', 'BILL_CANCELLED'):
+        dispatch_delay_status = 'CANCELLED'
+        dispatch_delay_days = 0
+        dispatch_delay_flag = False
+        dispatch_delayed_completed = False
     else:
-        if current_d > dispatch_due_d:
-            dispatch_delay_days = (current_d - dispatch_due_d).days
-            dispatch_delay_flag = True
-            dispatch_delayed_completed = False
-            dispatch_delay_status = 'DELAYED'
+        dispatches = getattr(bill, 'dispatches', []) or []
+        if dispatches and len(dispatches) > 0:
+            actual_disp_str = dispatches[0].dispatch_date
+            actual_disp_d = parse_date_safe(actual_disp_str).date() if actual_disp_str else current_d
+            
+            if actual_disp_d > dispatch_due_d:
+                dispatch_delay_days = (actual_disp_d - dispatch_due_d).days
+                dispatch_delay_flag = True
+                dispatch_delayed_completed = True
+                dispatch_delay_status = 'DISPATCHED_LATE'
+            else:
+                dispatch_delay_days = 0
+                dispatch_delay_flag = False
+                dispatch_delayed_completed = False
+                dispatch_delay_status = 'ON_TIME'
         else:
-            dispatch_delay_days = 0
-            dispatch_delay_flag = False
-            dispatch_delayed_completed = False
-            dispatch_delay_status = 'PENDING'
+            if current_d > dispatch_due_d:
+                dispatch_delay_days = (current_d - dispatch_due_d).days
+                dispatch_delay_flag = True
+                dispatch_delayed_completed = False
+                dispatch_delay_status = 'DELAYED'
+            else:
+                dispatch_delay_days = 0
+                dispatch_delay_flag = False
+                dispatch_delayed_completed = False
+                dispatch_delay_status = 'PENDING'
 
     # --- 2. QUERY RESOLUTION DELAY EVALUATION ---
     query_delay_status = 'NOT_APPLICABLE'

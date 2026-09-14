@@ -95,6 +95,7 @@
                     <option value="VERIFIED" {% if status_filter == 'VERIFIED' %}selected{% endif %}>VERIFIED</option>
                     <option value="DISPATCHED" {% if status_filter == 'DISPATCHED' %}selected{% endif %}>DISPATCHED</option>
                     <option value="PAID" {% if status_filter == 'PAID' %}selected{% endif %}>PAID</option>
+                    <option value="CANCELLED" {% if status_filter == 'CANCELLED' %}selected{% endif %}>CANCELLED</option>
                     <option value="CLOSED" {% if status_filter == 'CLOSED' %}selected{% endif %}>CLOSED</option>
                 </select>
                 <select name="bill_type" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
@@ -167,14 +168,20 @@
                                         bg-sky-500/10 text-sky-400 border border-sky-500/20
                                     {% elif b.bill_status == 'VERIFIED' %}
                                         bg-indigo-500/10 text-indigo-400 border border-indigo-500/20
+                                    {% elif b.bill_status in ('CANCELLED', 'BILL_CANCELLED') %}
+                                        bg-rose-500/10 text-rose-400 border border-rose-500/20
                                     {% else %}
                                         bg-amber-500/10 text-amber-400 border border-amber-500/20
                                     {% endif %}">
-                                    {{ b.bill_status }}
+                                    {{ 'CANCELLED' if b.bill_status in ('CANCELLED', 'BILL_CANCELLED') else b.bill_status }}
                                 </span>
                             </td>
                             <td class="py-3 px-3">
-                                {% if b.dispatch_delay_status == 'DISPATCHED_LATE' %}
+                                {% if b.bill_status in ('CANCELLED', 'BILL_CANCELLED') %}
+                                    <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                        🚫 Bill Cancelled
+                                    </span>
+                                {% elif b.dispatch_delay_status == 'DISPATCHED_LATE' %}
                                     <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
                                         🔴 Dispatched Late – {{ b.dispatch_delay_days }}d
                                     </span>

@@ -64,18 +64,18 @@
 
             <!-- 4. Verification -->
             <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.verifications %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
-                <div class="text-[10px] font-bold {% if bill.verifications %}text-emerald-400{% else %}text-slate-500{% endif %}">4. Verified</div>
+                <div class="text-[10px] font-bold {% if bill.bill_status == 'CANCELLED' %}text-rose-400{% elif bill.verifications %}text-emerald-400{% else %}text-slate-500{% endif %}">4. Verified</div>
                 <div class="text-xs font-bold text-slate-200 mt-1">
-                    {% if bill.verifications %}{{ bill.verifications[-1].verification_status }}{% else %}Pending{% endif %}
+                    {% if bill.bill_status == 'CANCELLED' %}<span class="text-rose-400">Bill Cancelled</span>{% elif bill.verifications %}{{ bill.verifications[-1].verification_status }}{% else %}Pending{% endif %}
                 </div>
                 <div class="text-[9px] text-slate-400 mt-1">Internal Audit</div>
             </div>
 
             <!-- 5. Dispatch -->
-            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.dispatches %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
-                <div class="text-[10px] font-bold {% if bill.dispatches %}text-emerald-400{% else %}text-slate-500{% endif %}">5. Dispatched</div>
+            <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.bill_status == 'CANCELLED' %}border-rose-500/30{% elif bill.dispatches %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
+                <div class="text-[10px] font-bold {% if bill.bill_status == 'CANCELLED' %}text-rose-400{% elif bill.dispatches %}text-emerald-400{% else %}text-slate-500{% endif %}">5. Dispatched</div>
                 <div class="text-xs font-bold text-slate-200 mt-1">
-                    {% if bill.dispatches %}{{ bill.dispatches[-1].dispatch_mode }}{% else %}Pending{% endif %}
+                    {% if bill.bill_status == 'CANCELLED' %}<span class="text-rose-400">Bill Cancelled</span>{% elif bill.dispatches %}{{ bill.dispatches[-1].dispatch_mode }}{% else %}Pending{% endif %}
                 </div>
                 <div class="text-[9px] text-slate-400 mt-1">Payer Submission</div>
             </div>
@@ -124,8 +124,8 @@
                 {% for v in bill.verifications %}
                 <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
                     <div class="flex justify-between font-bold">
-                        <span class="{% if v.verification_status == 'VERIFIED' %}text-emerald-400{% else %}text-rose-400{% endif %}">
-                            {{ v.verification_status }}
+                        <span class="{% if v.verification_status == 'VERIFIED' %}text-emerald-400{% elif v.verification_status in ('CANCELLED', 'BILL_CANCELLED') %}text-rose-400 font-extrabold{% else %}text-amber-400{% endif %}">
+                            {{ 'BILL CANCELLED' if v.verification_status in ('CANCELLED', 'BILL_CANCELLED') else v.verification_status }}
                         </span>
                         <span class="text-slate-400">{{ v.verified_at.strftime('%Y-%m-%d %H:%M') }}</span>
                     </div>
@@ -143,12 +143,15 @@
                     <input type="text" id="remarks" name="remarks" placeholder="Itemized bill verified against discharge summary" class="form-input">
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <button type="submit" name="action" value="VERIFY" class="btn-primary bg-emerald-600 hover:bg-emerald-700 flex-1">
-                        ✓ Approve & Verify Bill
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="submit" name="action" value="VERIFY" class="btn-primary bg-emerald-600 hover:bg-emerald-700 flex-1 min-w-[130px]">
+                        ✓ Approve & Verify
                     </button>
-                    <button type="submit" name="action" value="REJECT" class="btn-secondary text-rose-400 hover:bg-rose-600/20 flex-1">
+                    <button type="submit" name="action" value="REJECT" class="btn-secondary text-amber-400 hover:bg-amber-600/20 flex-1 min-w-[130px]">
                         ✕ Reject for Rework
+                    </button>
+                    <button type="submit" name="action" value="CANCEL" class="btn-secondary text-rose-400 border border-rose-500/40 hover:bg-rose-600/20 flex-1 min-w-[130px]" onclick="return confirm('Are you sure you want to cancel this bill? This will set status to BILL CANCELLED.');">
+                        🚫 Bill Cancelled
                     </button>
                 </div>
             </form>
@@ -167,16 +170,22 @@
                 {% for d in bill.dispatches %}
                 <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
                     <div class="flex justify-between font-bold">
-                        <span class="text-sky-400">{{ d.dispatch_mode }}</span>
+                        <span class="{% if d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED' %}text-rose-400 font-extrabold{% else %}text-sky-400{% endif %}">
+                            {{ d.dispatch_mode }} {% if d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED' %}- Bill Cancelled{% endif %}
+                        </span>
                         <span class="text-slate-400">{{ d.dispatch_date }}</span>
                     </div>
-                    <div class="text-slate-300 mt-1">Courier: {{ d.courier_name or 'N/A' }} | Tracking: <span class="font-mono text-indigo-400">{{ d.tracking_number or 'N/A' }}</span></div>
+                    <div class="text-slate-300 mt-1">Courier: {{ d.courier_name or 'N/A' }} | Tracking: <span class="font-mono text-indigo-400">{{ d.tracking_number or 'N/A' }}</span> | Status: <span class="font-bold {% if d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED' %}text-rose-400{% else %}text-emerald-400{% endif %}">{{ 'Bill Cancelled' if (d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED') else d.dispatch_status }}</span></div>
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
 
-            {% if not bill.is_verified %}
+            {% if bill.bill_status == 'CANCELLED' %}
+            <div class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 mt-2 font-bold">
+                <span>🚫 <strong>Dispatch Entry Blocked:</strong> This bill has been <strong>CANCELLED</strong> during verification and cannot be dispatched.</span>
+            </div>
+            {% elif not bill.is_verified %}
             <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 mt-2">
                 <span>🔴 <strong>Dispatch Entry Blocked:</strong> This bill must be <strong>VERIFIED</strong> before dispatch details can be entered.</span>
             </div>

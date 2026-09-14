@@ -180,11 +180,16 @@ def bill_detail(bill_id):
 @permission_required('verify_bill')
 def verify_bill(bill_id):
     bill = Bill.query.get_or_404(bill_id)
-    action = request.form.get('action') # VERIFY or REJECT
+    action = request.form.get('action') # VERIFY, REJECT, or CANCEL
     remarks = request.form.get('remarks', '')
     rejection_reason = request.form.get('rejection_reason', '')
 
-    verification_status = 'VERIFIED' if action == 'VERIFY' else 'REJECTED'
+    if action == 'VERIFY':
+        verification_status = 'VERIFIED'
+    elif action == 'CANCEL':
+        verification_status = 'CANCELLED'
+    else:
+        verification_status = 'REJECTED'
 
     verification = BillVerification(
         bill_id=bill.bill_id,
@@ -195,11 +200,21 @@ def verify_bill(bill_id):
     )
 
     db.session.add(verification)
-    bill.update_lifecycle_status()
+
+    if action == 'CANCEL':
+        bill.bill_status = 'CANCELLED'
+        # Reflect Bill Cancelled status across associated dispatches as well
+        for d in (bill.dispatches or []):
+            d.dispatch_status = 'CANCELLED'
+    else:
+        bill.update_lifecycle_status()
+
     db.session.commit()
 
     if action == 'VERIFY':
         flash(f"Bill '{bill.bill_number}' verified and approved for dispatch!", 'success')
+    elif action == 'CANCEL':
+        flash(f"Bill '{bill.bill_number}' marked as CANCELLED.", 'error')
     else:
         flash(f"Bill '{bill.bill_number}' rejected for rework.", 'error')
 
@@ -212,6 +227,10 @@ def verify_bill(bill_id):
 @permission_required('dispatch_bill')
 def dispatch_bill(bill_id):
     bill = Bill.query.get_or_404(bill_id)
+
+    if bill.bill_status == 'CANCELLED':
+        flash(f"Cannot dispatch bill '{bill.bill_number}'. The bill has been CANCELLED.", 'error')
+        return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
 
     # Validation: Until a bill is VERIFIED, entering dispatch details is NOT allowed
     if not bill.is_verified:
