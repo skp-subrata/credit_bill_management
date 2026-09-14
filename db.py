@@ -28,6 +28,51 @@ def init_db():
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # Credit Cards table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS credit_cards (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                card_name TEXT NOT NULL,
+                bank_name TEXT NOT NULL,
+                card_number_last4 TEXT NOT NULL,
+                credit_limit REAL NOT NULL,
+                billing_cycle_day INTEGER NOT NULL,
+                due_date_day INTEGER NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Bills table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bills (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                card_id INTEGER NOT NULL REFERENCES credit_cards(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                bill_amount REAL NOT NULL,
+                minimum_due REAL DEFAULT 0,
+                due_date TEXT NOT NULL,
+                billing_date TEXT NOT NULL,
+                status TEXT DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'paid', 'partially_paid')),
+                notes TEXT DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Payments table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bill_id INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                amount_paid REAL NOT NULL,
+                payment_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                payment_method TEXT DEFAULT 'Bank Transfer',
+                notes TEXT DEFAULT '',
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
 
         # Seed initial admin user if not exists
         if not conn.execute("SELECT 1 FROM users WHERE username = ?", ("admin",)).fetchone():
@@ -36,3 +81,4 @@ def init_db():
                 ("admin", generate_password_hash("admin123"), "System Administrator", "admin@example.com", "admin")
             )
             conn.commit()
+

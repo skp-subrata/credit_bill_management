@@ -81,7 +81,7 @@ DATA_CATEGORIES_CONFIG = {
         'label': 'Hospital-Payer / Payer-Pair Master',
         'headers': ['unit_code', 'payer_code', 'payer_code_at_unit', 'billing_type', 'credit_allowed', 'submission_tat_days', 'monthly_submission', 'dispatch_mode', 'status'],
         'sample': [
-            ['MH-BLR-01', 'PAY-STAR-01', 'STAR-BLR', 'CREDIT', 'Yes', 15, 'Yes', 'COURIER', 'ACTIVE'],
+            ['MH-BLR-01', 'PAY-STAR-01', 'STAR-BLR', 'CREDIT', 'Yes', 15, 'Yes', 'ONLINE + COURIER', 'ACTIVE'],
             ['MH-BLR-01', 'PAY-CGHS-01', 'CGHS-BLR', 'CREDIT', 'Yes', 30, 'No', 'HAND_DELIVERY', 'ACTIVE']
         ],
         'key_fields': ['unit_code', 'payer_code']
