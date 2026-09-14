@@ -160,8 +160,18 @@
 
         <!-- 2. Dispatch Tracker Module -->
         <div class="glass-panel p-6 space-y-4">
-            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex items-center justify-between">
-                <span>2. Dispatch Tracker</span>
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span>2. Dispatch Tracker</span>
+                    <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full 
+                        {% if bill.effective_dispatch_status == 'DISPATCHED' %}bg-sky-500/10 text-sky-400 border border-sky-500/20
+                        {% elif bill.effective_dispatch_status == 'READY_FOR_DISPATCH' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
+                        {% elif bill.effective_dispatch_status == 'REJECTED' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
+                        {% elif bill.effective_dispatch_status == 'CANCELLED' %}bg-rose-500/10 text-rose-400 border border-rose-500/20
+                        {% else %}bg-slate-800 text-slate-400 border border-slate-700{% endif %}">
+                        STATUS: {{ bill.effective_dispatch_status.replace('_', ' ') }}
+                    </span>
+                </div>
                 <span class="text-xs font-normal text-slate-400">Dispatches: {{ bill.dispatches|length }}</span>
             </h2>
 
@@ -170,20 +180,24 @@
                 {% for d in bill.dispatches %}
                 <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
                     <div class="flex justify-between font-bold">
-                        <span class="{% if d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED' %}text-rose-400 font-extrabold{% else %}text-sky-400{% endif %}">
-                            {{ d.dispatch_mode }} {% if d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED' %}- Bill Cancelled{% endif %}
+                        <span class="{% if d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.effective_dispatch_status == 'CANCELLED' %}text-rose-400 font-extrabold{% elif d.dispatch_status == 'REJECTED' or bill.effective_dispatch_status == 'REJECTED' %}text-amber-400 font-extrabold{% else %}text-sky-400{% endif %}">
+                            {{ d.dispatch_mode }} {% if bill.effective_dispatch_status == 'CANCELLED' %}- Bill Cancelled{% elif bill.effective_dispatch_status == 'REJECTED' %}- Rejected for Rework{% endif %}
                         </span>
                         <span class="text-slate-400">{{ d.dispatch_date }}</span>
                     </div>
-                    <div class="text-slate-300 mt-1">Courier: {{ d.courier_name or 'N/A' }} | Tracking: <span class="font-mono text-indigo-400">{{ d.tracking_number or 'N/A' }}</span> | Status: <span class="font-bold {% if d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED' %}text-rose-400{% else %}text-emerald-400{% endif %}">{{ 'Bill Cancelled' if (d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED') or bill.bill_status == 'CANCELLED') else d.dispatch_status }}</span></div>
+                    <div class="text-slate-300 mt-1">Courier: {{ d.courier_name or 'N/A' }} | Tracking: <span class="font-mono text-indigo-400">{{ d.tracking_number or 'N/A' }}</span> | Status: <span class="font-bold {% if bill.effective_dispatch_status == 'CANCELLED' %}text-rose-400{% elif bill.effective_dispatch_status == 'REJECTED' %}text-amber-400{% else %}text-emerald-400{% endif %}">{{ bill.effective_dispatch_status.replace('_', ' ') }}</span></div>
                 </div>
                 {% endfor %}
             </div>
             {% endif %}
 
-            {% if bill.bill_status == 'CANCELLED' %}
+            {% if bill.effective_dispatch_status == 'CANCELLED' or bill.bill_status == 'CANCELLED' %}
             <div class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2 mt-2 font-bold">
-                <span>🚫 <strong>Dispatch Entry Blocked:</strong> This bill has been <strong>CANCELLED</strong> during verification and cannot be dispatched.</span>
+                <span>🚫 <strong>Dispatch Entry Blocked:</strong> This bill has been <strong>CANCELLED</strong> during internal verification.</span>
+            </div>
+            {% elif bill.effective_dispatch_status == 'REJECTED' %}
+            <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 mt-2 font-bold">
+                <span>🔴 <strong>Dispatch Entry Blocked:</strong> Internal verification was <strong>REJECTED for Rework</strong>. Please re-verify the bill after resolving issues.</span>
             </div>
             {% elif not bill.is_verified %}
             <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 mt-2">

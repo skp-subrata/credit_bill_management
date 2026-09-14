@@ -293,11 +293,48 @@ class Bill(db.Model):
         """Returns True if the bill has been verified or is at/past the VERIFIED lifecycle stage."""
         if self.bill_status == 'CANCELLED':
             return False
+        verifs = self.verifications or []
+        if verifs and len(verifs) > 0:
+            latest_v = verifs[-1]
+            if latest_v.verification_status in ('CANCELLED', 'BILL_CANCELLED', 'REJECTED'):
+                return False
+            if latest_v.verification_status == 'VERIFIED':
+                return True
         if any(v.verification_status in ('CANCELLED', 'BILL_CANCELLED') for v in (self.verifications or [])):
             return False
         if any(v.verification_status == 'VERIFIED' for v in (self.verifications or [])):
             return True
         return self.bill_status in ('VERIFIED', 'DISPATCHED', 'QUERIED', 'PARTIALLY_PAID', 'PAID', 'CLOSED')
+
+    @property
+    def effective_dispatch_status(self):
+        """
+        Dynamically derives the Dispatch Tracker status based on the latest Internal Verification and Dispatch state.
+        """
+        if self.bill_status == 'CANCELLED':
+            return 'CANCELLED'
+
+        verifs = self.verifications or []
+        if verifs and len(verifs) > 0:
+            latest_v = verifs[-1]
+            if latest_v.verification_status in ('CANCELLED', 'BILL_CANCELLED'):
+                return 'CANCELLED'
+            elif latest_v.verification_status == 'REJECTED':
+                return 'REJECTED'
+
+        dispatches = self.dispatches or []
+        if dispatches and len(dispatches) > 0:
+            latest_d = dispatches[-1]
+            if latest_d.dispatch_status in ('CANCELLED', 'BILL_CANCELLED'):
+                return 'CANCELLED'
+            elif latest_d.dispatch_status == 'REJECTED':
+                return 'REJECTED'
+            return 'DISPATCHED'
+
+        if self.is_verified:
+            return 'READY_FOR_DISPATCH'
+
+        return 'VERIFICATION_PENDING'
 
     def update_lifecycle_status(self):
         """Updates and persists self.bill_status and delay metrics based on the highest completed lifecycle stage and SLA due dates."""

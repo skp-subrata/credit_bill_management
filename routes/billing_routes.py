@@ -203,20 +203,29 @@ def verify_bill(bill_id):
 
     if action == 'CANCEL':
         bill.bill_status = 'CANCELLED'
-        # Reflect Bill Cancelled status across associated dispatches as well
+        # Reflect Bill Cancelled status across associated dispatches
         for d in (bill.dispatches or []):
             d.dispatch_status = 'CANCELLED'
+    elif action == 'REJECT':
+        # Reflect REJECTED status across associated dispatches
+        for d in (bill.dispatches or []):
+            d.dispatch_status = 'REJECTED'
+        bill.update_lifecycle_status()
     else:
+        # Reflect DISPATCHED/VERIFIED status across associated dispatches
+        for d in (bill.dispatches or []):
+            if d.dispatch_status in ('CANCELLED', 'REJECTED'):
+                d.dispatch_status = 'DISPATCHED'
         bill.update_lifecycle_status()
 
     db.session.commit()
 
     if action == 'VERIFY':
-        flash(f"Bill '{bill.bill_number}' verified and approved for dispatch!", 'success')
+        flash(f"Bill '{bill.bill_number}' verified and approved for dispatch! Dispatch Tracker updated to READY FOR DISPATCH.", 'success')
     elif action == 'CANCEL':
-        flash(f"Bill '{bill.bill_number}' marked as CANCELLED.", 'error')
+        flash(f"Bill '{bill.bill_number}' marked as CANCELLED. Dispatch Tracker updated to CANCELLED.", 'error')
     else:
-        flash(f"Bill '{bill.bill_number}' rejected for rework.", 'error')
+        flash(f"Bill '{bill.bill_number}' rejected for rework. Dispatch Tracker updated to REJECTED.", 'warning')
 
     log_audit('VERIFY_BILL', 'Bill', bill.bill_id, None, {'status': verification_status})
     return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
@@ -228,8 +237,12 @@ def verify_bill(bill_id):
 def dispatch_bill(bill_id):
     bill = Bill.query.get_or_404(bill_id)
 
-    if bill.bill_status == 'CANCELLED':
+    if bill.effective_dispatch_status == 'CANCELLED':
         flash(f"Cannot dispatch bill '{bill.bill_number}'. The bill has been CANCELLED.", 'error')
+        return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
+
+    if bill.effective_dispatch_status == 'REJECTED':
+        flash(f"Cannot dispatch bill '{bill.bill_number}'. Internal verification was REJECTED for rework.", 'error')
         return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
 
     # Validation: Until a bill is VERIFIED, entering dispatch details is NOT allowed
