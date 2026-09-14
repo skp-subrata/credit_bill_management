@@ -180,6 +180,12 @@ def bill_detail(bill_id):
 @permission_required('verify_bill')
 def verify_bill(bill_id):
     bill = Bill.query.get_or_404(bill_id)
+
+    # Validation: Once a bill is DISPATCHED, verification is locked for all users
+    if bill.effective_dispatch_status == 'DISPATCHED' or (bill.dispatches and len(bill.dispatches) > 0):
+        flash(f"Cannot modify verification for bill '{bill.bill_number}'. The bill has already been DISPATCHED.", 'error')
+        return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
+
     action = request.form.get('action') # VERIFY, REJECT, or CANCEL
     remarks = request.form.get('remarks', '')
     rejection_reason = request.form.get('rejection_reason', '')
