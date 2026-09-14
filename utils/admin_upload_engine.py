@@ -9,6 +9,66 @@ from models import (
     Bill, BillVerification, BillDispatch, BillQuery, BillPayment, AdminUploadHistory
 )
 
+HEADER_ALIASES = {
+    # Patient Master
+    'uhid': 'uhid',
+    'uhidno': 'uhid',
+    'uhidnumber': 'uhid',
+    'patientid': 'uhid',
+    'mrn': 'uhid',
+    'patientname': 'patient_name',
+    'name': 'patient_name',
+    'fullname': 'patient_name',
+    'dateofbirth': 'date_of_birth',
+    'dob': 'date_of_birth',
+    'birthdate': 'date_of_birth',
+    'gender': 'gender',
+    'sex': 'gender',
+    'phone': 'phone',
+    'phonenumber': 'phone',
+    'mobile': 'phone',
+    'mobileno': 'phone',
+    'mobilenumber': 'phone',
+    'contact': 'phone',
+    'contactno': 'phone',
+    'contactnumber': 'phone',
+    'email': 'email',
+    'emailid': 'email',
+    'emailaddress': 'email',
+    'address': 'address',
+    'location': 'address',
+    'addressline1': 'address',
+
+    # Hospital Units
+    'unitcode': 'unit_code',
+    'hospitalname': 'hospital_name',
+
+    # Payers
+    'payercode': 'payer_code',
+    'payername': 'payer_name',
+    'payertype': 'payer_type',
+
+    # Hospital Payers
+    'monthlysubmission': 'monthly_submission',
+    'submissiontatdays': 'submission_tat_days',
+    'submissiontat': 'submission_tat_days',
+    'tatdays': 'submission_tat_days',
+    'dispatchmode': 'dispatch_mode',
+
+    # Doctor Master
+    'doctorcode': 'doctor_code',
+    'doctorname': 'doctor_name',
+
+    # Bills
+    'billnumber': 'bill_number',
+    'billno': 'bill_number',
+    'billdate': 'bill_date',
+    'billamount': 'bill_amount',
+    'outstandingamount': 'outstanding_amount',
+    'ipnumber': 'ip_number',
+    'ipno': 'ip_number',
+}
+
 def parse_admin_file(file_bytes, filename):
     """
     Multi-format parser for .xlsx, .xls, .csv files.
@@ -45,11 +105,38 @@ def parse_admin_file(file_bytes, filename):
                         row_dict[h] = str(r[idx]).strip() if r[idx] is not None else ''
                 if row_dict:
                     rows.append(row_dict)
-            return rows
+            if rows:
+                return rows
     except Exception:
         pass
 
-    # 3. Fallback to HIS Parser
+    # 3. xlrd (.xls)
+    try:
+        import xlrd
+        wb = xlrd.open_workbook(file_contents=file_bytes)
+        ws = wb.sheet_by_index(0)
+        if ws.nrows > 1:
+            headers = [str(ws.cell_value(0, col)).strip().lower() for col in range(ws.ncols)]
+            rows = []
+            for r in range(1, ws.nrows):
+                row_vals = [ws.cell_value(r, col) for col in range(ws.ncols)]
+                if not any(v is not None and str(v).strip() != '' for v in row_vals):
+                    continue
+                row_dict = {}
+                for idx, h in enumerate(headers):
+                    if h and idx < len(row_vals):
+                        val = row_vals[idx]
+                        if isinstance(val, float) and val.is_integer():
+                            val = int(val)
+                        row_dict[h] = str(val).strip() if val is not None else ''
+                if row_dict:
+                    rows.append(row_dict)
+            if rows:
+                return rows
+    except Exception:
+        pass
+
+    # 4. Fallback to HIS Parser
     try:
         from utils.his_sync.parsers import parse_his_file
         return parse_his_file(filename, file_bytes)
@@ -93,7 +180,7 @@ DATA_CATEGORIES_CONFIG = {
             ['UHID-9001001', 'Ramesh Sharma', '1985-06-15', 'MALE', '9876543210', 'ramesh@gmail.com', 'Indiranagar, Bangalore'],
             ['UHID-9001002', 'Priya Patel', '1992-11-20', 'FEMALE', '9812345678', 'priya@yahoo.com', 'Koramangala, Bangalore']
         ],
-        'key_fields': ['uhid']
+        'key_fields': ['uhid', 'patient_name']
     },
     'doctor_master': {
         'label': 'Doctor Master',
@@ -204,7 +291,14 @@ def validate_admin_upload(category_key, file_storage):
     seen_keys = set()
 
     for idx, row in enumerate(rows, start=2):
-        cleaned_row = {str(k).strip().lower(): str(v).strip() for k, v in row.items() if k and v is not None}
+        cleaned_row = {}
+        for k, v in row.items():
+            if not k or v is None:
+                continue
+            rk = str(k).strip().lower()
+            stripped_rk = rk.replace(' ', '').replace('_', '').replace('-', '')
+            canonical_k = HEADER_ALIASES.get(rk, HEADER_ALIASES.get(stripped_rk, rk))
+            cleaned_row[canonical_k] = str(v).strip()
 
         # Check mandatory key fields
         missing_keys = [k for k in key_fields if not cleaned_row.get(k)]
@@ -343,12 +437,15 @@ def execute_admin_import(category_key, valid_records, user_id, filename):
                 db.session.add(hp)
 
             elif category_key == 'patients':
-                pt = Patient.query.filter_by(uhid=row['uhid']).first() or Patient(uhid=row['uhid'])
-                pt.patient_name = row.get('patient_name', pt.patient_name or '')
-                pt.date_of_birth = row.get('date_of_birth', '')
-                pt.gender = row.get('gender', 'OTHER').upper()
-                pt.phone = row.get('phone', '')
-                pt.email = row.get('email', '')
+                uhid = row['uhid']
+                pname = row.get('patient_name') or f"Patient {uhid}"
+                pt = Patient.query.filter_by(uhid=uhid).first() or Patient(uhid=uhid)
+                pt.patient_name = pname
+                pt.date_of_birth = row.get('date_of_birth', getattr(pt, 'date_of_birth', ''))
+                pt.gender = (row.get('gender') or getattr(pt, 'gender', 'OTHER') or 'OTHER').upper()
+                pt.phone = row.get('phone', getattr(pt, 'phone', ''))
+                pt.email = row.get('email', getattr(pt, 'email', ''))
+                pt.address = row.get('address', getattr(pt, 'address', ''))
                 db.session.add(pt)
 
             elif category_key == 'doctor_master':
