@@ -58,7 +58,7 @@
             <!-- 3. Generated Bill -->
             <div class="p-3 rounded-xl bg-slate-950/60 border border-emerald-500/30">
                 <div class="text-[10px] font-bold text-emerald-400">3. Generated</div>
-                <div class="text-xs font-bold text-slate-200 mt-1">${{ "%.2f"|format(bill.bill_amount) }}</div>
+                <div class="text-xs font-bold text-slate-200 mt-1">₹{{ "%.2f"|format(bill.bill_amount) }}</div>
                 <div class="text-[9px] text-slate-400 mt-1">{{ bill.bill_date }}</div>
             </div>
 
@@ -93,9 +93,9 @@
             <div class="p-3 rounded-xl bg-slate-950/60 border {% if bill.payments %}border-emerald-500/30{% else %}border-slate-800 opacity-60{% endif %}">
                 <div class="text-[10px] font-bold {% if bill.payments %}text-emerald-400{% else %}text-slate-500{% endif %}">7. Payments</div>
                 <div class="text-xs font-bold text-slate-200 mt-1">
-                    ${{ "%.2f"|format(bill.bill_amount - bill.outstanding_amount) }}
+                    ₹{{ "%.2f"|format(bill.bill_amount - bill.outstanding_amount) }}
                 </div>
-                <div class="text-[9px] text-slate-400 mt-1">Due: ${{ "%.2f"|format(bill.outstanding_amount) }}</div>
+                <div class="text-[9px] text-slate-400 mt-1">Due: ₹{{ "%.2f"|format(bill.outstanding_amount) }}</div>
             </div>
 
             <!-- 8. Closure -->
@@ -286,12 +286,12 @@
                 {% for p in bill.payments %}
                 <div class="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
                     <div class="flex justify-between font-bold">
-                        <span class="text-emerald-400">Received: ${{ "%.2f"|format(p.amount_received) }}</span>
+                        <span class="text-emerald-400">Received: ₹{{ "%.2f"|format(p.amount_received) }}</span>
                         <span class="text-slate-400">UTR: {{ p.utr_number }}</span>
                     </div>
                     <div class="text-[10px] text-slate-400 mt-1">Date: {{ p.payment_date }} | Mode: {{ p.payment_mode }}</div>
                     {% if p.short_fall_amount > 0 %}
-                    <div class="text-[10px] text-rose-400 mt-1">Shortfall / Disallowance: ${{ "%.2f"|format(p.short_fall_amount) }} ({{ p.disallowance_reason }})</div>
+                    <div class="text-[10px] text-rose-400 mt-1">Shortfall / Disallowance: ₹{{ "%.2f"|format(p.short_fall_amount) }} ({{ p.disallowance_reason }})</div>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -312,11 +312,11 @@
 
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label for="amount_received" class="form-label">Amount Received ($)</label>
+                        <label for="amount_received" class="form-label">Amount Received (₹)</label>
                         <input type="number" step="0.01" id="amount_received" name="amount_received" required value="{{ bill.outstanding_amount }}" class="form-input">
                     </div>
                     <div>
-                        <label for="short_fall_amount" class="form-label">Shortfall / Disallowance ($)</label>
+                        <label for="short_fall_amount" class="form-label">Shortfall / Disallowance (₹)</label>
                         <input type="number" step="0.01" id="short_fall_amount" name="short_fall_amount" value="0.00" class="form-input">
                     </div>
                 </div>

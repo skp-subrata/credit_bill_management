@@ -101,7 +101,7 @@ def bills():
         db.session.commit()
 
         log_audit('GENERATE_BILL', 'Bill', bill.bill_id, None, {'bill_number': bill_number, 'amount': bill_amount})
-        flash(f"Bill '{bill_number}' of ${bill_amount:,.2f} generated successfully!", 'success')
+        flash(f"Bill '{bill_number}' of ₹{bill_amount:,.2f} generated successfully!", 'success')
         return redirect(url_for('billing.bills'))
 
     # Load Discharged IP admissions & OP episodes ready for billing
@@ -309,7 +309,7 @@ def record_payment(bill_id):
     db.session.commit()
 
     log_audit('RECORD_BILL_PAYMENT', 'BillPayment', payment.payment_id, None, {'utr': utr_number, 'amount': amount_received})
-    flash(f"Payment of ${amount_received:,.2f} recorded under UTR '{utr_number}'!", 'success')
+    flash(f"Payment of ₹{amount_received:,.2f} recorded under UTR '{utr_number}'!", 'success')
     return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
 
 # --- BILL CLOSURE ---
