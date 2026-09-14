@@ -60,42 +60,53 @@
 
         <!-- Patients List Table -->
         <div class="lg:col-span-2 glass-panel p-6 space-y-4">
-            <div class="flex items-center justify-between gap-4">
-                <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Registered Patients</h2>
-
-                <!-- Search -->
-                <form method="GET" action="{{ url_for('masters.patients') }}" class="flex gap-2">
-                    <input type="text" name="search" value="{{ search }}" placeholder="Search UHID / Name / Phone..." class="form-input w-56">
-                    <button type="submit" class="btn-secondary py-1 px-3">Search</button>
-                </form>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Registered Patients ({{ patients|length }})</h2>
+                <a href="{{ url_for('masters.patients', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', search=search) }}"
+                   class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors inline-flex items-center gap-1">
+                    <span>📅 Sort Registration Date</span>
+                    <span class="text-indigo-400 font-bold">{% if sort_order == 'asc' %}▲ ASC{% else %}▼ DESC{% endif %}</span>
+                </a>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead>
+            <!-- Filter Controls Bar -->
+            <form method="GET" action="{{ url_for('masters.patients') }}" class="flex items-center gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+                <input type="text" name="search" value="{{ search or '' }}" placeholder="Search UHID / Patient Name / Phone..." class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium flex-1">
+                <button type="submit" class="btn-primary text-xs py-1.5 px-4">Search</button>
+                <a href="{{ url_for('masters.patients') }}" class="btn-secondary text-xs py-1.5 px-3">Reset</a>
+            </form>
+
+            <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-slate-800/80">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 z-10 bg-slate-900 shadow-md">
                         <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
-                            <th class="pb-3">UHID</th>
-                            <th class="pb-3">Patient Name</th>
-                            <th class="pb-3">Gender / DOB</th>
-                            <th class="pb-3">Phone</th>
-                            <th class="pb-3">Registered At</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">UHID</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Patient Name</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Gender / DOB</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Phone</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">
+                                <a href="{{ url_for('masters.patients', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', search=search) }}" class="inline-flex items-center gap-1 hover:text-indigo-400">
+                                    <span>Registered At</span>
+                                    <span class="text-indigo-400">{% if sort_order == 'asc' %}▲{% else %}▼{% endif %}</span>
+                                </a>
+                            </th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/60">
                         {% for p in patients %}
                         <tr>
-                            <td class="py-3 font-bold text-indigo-400">{{ p.uhid }}</td>
-                            <td class="py-3 font-medium text-slate-200">{{ p.patient_name }}</td>
-                            <td class="py-3 text-slate-400">{{ p.gender }} ({{ p.date_of_birth or 'N/A' }})</td>
-                            <td class="py-3 text-slate-400">{{ p.phone or 'N/A' }}</td>
-                            <td class="py-3 text-slate-500">{{ p.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td class="py-3 px-3 font-bold text-indigo-400">{{ p.uhid }}</td>
+                            <td class="py-3 px-3 font-medium text-slate-200">{{ p.patient_name }}</td>
+                            <td class="py-3 px-3 text-slate-400">{{ p.gender }} ({{ p.date_of_birth or 'N/A' }})</td>
+                            <td class="py-3 px-3 text-slate-400">{{ p.phone or 'N/A' }}</td>
+                            <td class="py-3 px-3 text-slate-500">{{ p.created_at.strftime('%Y-%m-%d') if p.created_at else 'N/A' }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             {% import "components/pagination.html" as pg %}
-            {{ pg.render_pagination(pagination, 'masters.patients', search=search) }}
+            {{ pg.render_pagination(pagination, 'masters.patients', search=search, sort_order=sort_order) }}
         </div>
     </div>
 

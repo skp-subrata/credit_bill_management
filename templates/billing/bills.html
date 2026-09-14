@@ -77,32 +77,66 @@
 
         <!-- Bills List Table -->
         <div class="lg:col-span-2 glass-panel p-6 space-y-4">
-            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">All Billing Transactions ({{ bills|length }})</h2>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">All Billing Transactions ({{ bills|length }})</h2>
+                <a href="{{ url_for('billing.bills', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter, bill_type=bill_type_filter) }}"
+                   class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors inline-flex items-center gap-1">
+                    <span>📅 Sort Date</span>
+                    <span class="text-indigo-400 font-bold">{% if sort_order == 'asc' %}▲ ASC{% else %}▼ DESC{% endif %}</span>
+                </a>
+            </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead>
+            <!-- Filter Controls Bar -->
+            <form method="GET" action="{{ url_for('billing.bills') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+                <input type="text" name="q" value="{{ q or '' }}" placeholder="Search Bill No / Patient..." class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                <select name="status" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <option value="">-- All Statuses --</option>
+                    <option value="GENERATED" {% if status_filter == 'GENERATED' %}selected{% endif %}>GENERATED</option>
+                    <option value="VERIFIED" {% if status_filter == 'VERIFIED' %}selected{% endif %}>VERIFIED</option>
+                    <option value="DISPATCHED" {% if status_filter == 'DISPATCHED' %}selected{% endif %}>DISPATCHED</option>
+                    <option value="PAID" {% if status_filter == 'PAID' %}selected{% endif %}>PAID</option>
+                    <option value="CLOSED" {% if status_filter == 'CLOSED' %}selected{% endif %}>CLOSED</option>
+                </select>
+                <select name="bill_type" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <option value="">-- All Bill Types --</option>
+                    <option value="CREDIT" {% if bill_type_filter == 'CREDIT' %}selected{% endif %}>CREDIT</option>
+                    <option value="CASH" {% if bill_type_filter == 'CASH' %}selected{% endif %}>CASH</option>
+                </select>
+                <div class="flex items-center gap-1.5">
+                    <button type="submit" class="btn-primary text-xs py-1.5 px-3 flex-1">Filter</button>
+                    <a href="{{ url_for('billing.bills') }}" class="btn-secondary text-xs py-1.5 px-2.5">Reset</a>
+                </div>
+            </form>
+
+            <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-slate-800/80">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 z-10 bg-slate-900 shadow-md">
                         <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
-                            <th class="pb-3">Bill Details</th>
-                            <th class="pb-3">Patient Name</th>
-                            <th class="pb-3">Payer & Type</th>
-                            <th class="pb-3">TAT SLA (Start / Due)</th>
-                            <th class="pb-3">Amount</th>
-                            <th class="pb-3">Status</th>
-                            <th class="pb-3">Dispatch Delay</th>
-                            <th class="pb-3">Query Delay</th>
-                            <th class="pb-3 text-right">Action</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">
+                                <a href="{{ url_for('billing.bills', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter, bill_type=bill_type_filter) }}" class="inline-flex items-center gap-1 hover:text-indigo-400">
+                                    <span>Bill Details</span>
+                                    <span class="text-indigo-400">{% if sort_order == 'asc' %}▲{% else %}▼{% endif %}</span>
+                                </a>
+                            </th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Patient Name</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Payer & Type</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">TAT SLA (Start / Due)</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Amount</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Status</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Dispatch Delay</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Query Delay</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/60">
                         {% for b in bills %}
                         <tr>
-                            <td class="py-3 font-bold text-indigo-400">
+                            <td class="py-3 px-3 font-bold text-indigo-400">
                                 <a href="{{ url_for('billing.bill_detail', bill_id=b.bill_id) }}" class="hover:underline">{{ b.bill_number }}</a>
                                 <div class="text-[10px] text-slate-400">{{ b.encounter_type }} | Build: {{ b.bill_date }}</div>
                             </td>
-                            <td class="py-3 font-medium text-slate-200">{{ b.patient_name_snapshot }}</td>
-                            <td class="py-3">
+                            <td class="py-3 px-3 font-medium text-slate-200">{{ b.patient_name_snapshot }}</td>
+                            <td class="py-3 px-3">
                                 <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
                                     {% if b.bill_type == 'CREDIT' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
                                     {% else %}bg-slate-500/10 text-slate-400 border border-slate-500/20{% endif %}">
@@ -110,7 +144,7 @@
                                 </span>
                                 <div class="text-[10px] text-slate-400 mt-0.5">{{ b.payer.payer_name if b.payer else 'Cash' }}</div>
                             </td>
-                            <td class="py-3">
+                            <td class="py-3 px-3">
                                 {% if b.tat_info %}
                                 <div class="text-xs font-bold text-slate-200">Start: {{ b.tat_info.tat_start_date }}</div>
                                 <div class="text-[10px] text-slate-400">Due: {{ b.tat_info.tat_due_date }} ({{ b.tat_info.submission_tat_days }}d SLA)</div>
@@ -121,11 +155,11 @@
                                 <span class="text-slate-500 text-xs">Standard</span>
                                 {% endif %}
                             </td>
-                            <td class="py-3 font-bold text-slate-200">
+                            <td class="py-3 px-3 font-bold text-slate-200">
                                 ₹{{ "%.2f"|format(b.bill_amount) }}
                                 <div class="text-[10px] text-amber-400">Due: ₹{{ "%.2f"|format(b.outstanding_amount) }}</div>
                             </td>
-                            <td class="py-3">
+                            <td class="py-3 px-3">
                                 <span class="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full 
                                     {% if b.bill_status == 'CLOSED' or b.bill_status == 'PAID' %}
                                         bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
@@ -139,7 +173,7 @@
                                     {{ b.bill_status }}
                                 </span>
                             </td>
-                            <td class="py-3">
+                            <td class="py-3 px-3">
                                 {% if b.dispatch_delay_status == 'DISPATCHED_LATE' %}
                                     <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
                                         🔴 Dispatched Late – {{ b.dispatch_delay_days }}d
@@ -158,7 +192,7 @@
                                     </span>
                                 {% endif %}
                             </td>
-                            <td class="py-3">
+                            <td class="py-3 px-3">
                                 {% if b.query_delay_status == 'QUERY_RESOLVED_LATE' %}
                                     <span class="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                                         🔴 Query Resolved Late – {{ b.query_delay_days }}d
@@ -175,7 +209,7 @@
                                     <span class="text-[10px] text-slate-500">—</span>
                                 {% endif %}
                             </td>
-                            <td class="py-3 text-right">
+                            <td class="py-3 px-3 text-right">
                                 <a href="{{ url_for('billing.bill_detail', bill_id=b.bill_id) }}" class="btn-secondary text-[10px] py-1 px-2.5">
                                     Manage &rarr;
                                 </a>
@@ -186,7 +220,7 @@
                 </table>
             </div>
             {% import "components/pagination.html" as pg %}
-            {{ pg.render_pagination(pagination, 'billing.bills') }}
+            {{ pg.render_pagination(pagination, 'billing.bills', q=q, status=status_filter, bill_type=bill_type_filter, sort_order=sort_order) }}
         </div>
     </div>
 

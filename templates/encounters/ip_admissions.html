@@ -79,30 +79,61 @@
 
         <!-- IP Admissions Queue -->
         <div class="lg:col-span-2 glass-panel p-6 space-y-4">
-            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Active IP Encounters ({{ admissions|length }})</h2>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Active IP Encounters ({{ admissions|length }})</h2>
+                <a href="{{ url_for('encounters.ip_admissions', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter, bill_type=bill_type_filter) }}"
+                   class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors inline-flex items-center gap-1">
+                    <span>📅 Sort Admission Date</span>
+                    <span class="text-indigo-400 font-bold">{% if sort_order == 'asc' %}▲ ASC{% else %}▼ DESC{% endif %}</span>
+                </a>
+            </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead>
+            <!-- Filter Controls Bar -->
+            <form method="GET" action="{{ url_for('encounters.ip_admissions') }}" class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+                <input type="text" name="q" value="{{ q or '' }}" placeholder="Search IP No / Patient..." class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                <select name="status" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <option value="">-- All Statuses --</option>
+                    <option value="ADMITTED" {% if status_filter == 'ADMITTED' %}selected{% endif %}>ADMITTED</option>
+                    <option value="DISCHARGED" {% if status_filter == 'DISCHARGED' %}selected{% endif %}>DISCHARGED</option>
+                </select>
+                <select name="bill_type" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <option value="">-- All Bill Types --</option>
+                    <option value="CREDIT" {% if bill_type_filter == 'CREDIT' %}selected{% endif %}>CREDIT</option>
+                    <option value="CASH" {% if bill_type_filter == 'CASH' %}selected{% endif %}>CASH</option>
+                </select>
+                <div class="flex items-center gap-1.5">
+                    <button type="submit" class="btn-primary text-xs py-1.5 px-3 flex-1">Filter</button>
+                    <a href="{{ url_for('encounters.ip_admissions') }}" class="btn-secondary text-xs py-1.5 px-2.5">Reset</a>
+                </div>
+            </form>
+
+            <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-slate-800/80">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 z-10 bg-slate-900 shadow-md">
                         <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
-                            <th class="pb-3">IP Number</th>
-                            <th class="pb-3">Patient Name</th>
-                            <th class="pb-3">Admission Date</th>
-                            <th class="pb-3">Bill Type & Payer</th>
-                            <th class="pb-3">Status</th>
-                            <th class="pb-3 text-right">Action</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">IP Number</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Patient Name</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">
+                                <a href="{{ url_for('encounters.ip_admissions', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter, bill_type=bill_type_filter) }}" class="inline-flex items-center gap-1 hover:text-indigo-400">
+                                    <span>Admission Date</span>
+                                    <span class="text-indigo-400">{% if sort_order == 'asc' %}▲{% else %}▼{% endif %}</span>
+                                </a>
+                            </th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Bill Type & Payer</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Status</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/60">
                         {% for a in admissions %}
                         <tr>
-                            <td class="py-3 font-bold text-indigo-400">{{ a.ip_number }}</td>
-                            <td class="py-3 font-medium text-slate-200">
+                            <td class="py-3 px-3 font-bold text-indigo-400">{{ a.ip_number }}</td>
+                            <td class="py-3 px-3 font-medium text-slate-200">
                                 {{ a.patient_name_snapshot }}
                                 <div class="text-[10px] text-slate-400">{{ a.department }} | {{ a.doctor_name }}</div>
                             </td>
-                            <td class="py-3 text-slate-400">{{ a.admission_date }}</td>
-                            <td class="py-3">
+                            <td class="py-3 px-3 text-slate-400">{{ a.admission_date }}</td>
+                            <td class="py-3 px-3">
                                 <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
                                     {% if a.bill_type == 'CREDIT' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
                                     {% else %}bg-slate-500/10 text-slate-400 border border-slate-500/20{% endif %}">
@@ -110,14 +141,14 @@
                                 </span>
                                 <div class="text-[10px] text-slate-400 mt-0.5">{{ a.payer.payer_name if a.payer else 'Self Pay' }}</div>
                             </td>
-                            <td class="py-3">
+                            <td class="py-3 px-3">
                                 <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
                                     {% if a.admission_status == 'DISCHARGED' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
                                     {% else %}bg-amber-500/10 text-amber-400 border border-amber-500/20{% endif %}">
                                     {{ a.admission_status }}
                                 </span>
                             </td>
-                            <td class="py-3 text-right">
+                            <td class="py-3 px-3 text-right">
                                 {% if a.admission_status != 'DISCHARGED' %}
                                 <form method="POST" action="{{ url_for('encounters.ip_discharge', admission_id=a.admission_id) }}" class="inline">
                                     <input type="hidden" name="discharge_date" value="2026-09-11">
@@ -135,7 +166,7 @@
                 </table>
             </div>
             {% import "components/pagination.html" as pg %}
-            {{ pg.render_pagination(pagination, 'encounters.ip_admissions') }}
+            {{ pg.render_pagination(pagination, 'encounters.ip_admissions', q=q, status=status_filter, bill_type=bill_type_filter, sort_order=sort_order) }}
         </div>
     </div>
 

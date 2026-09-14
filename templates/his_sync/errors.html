@@ -19,57 +19,76 @@
     </div>
 
     <!-- Filter Form -->
-    <div class="glass-panel p-4 flex items-center justify-between gap-4">
-        <form method="GET" action="{{ url_for('his_sync.errors') }}" class="flex items-center gap-3 w-full">
-            <label for="batch_id" class="text-xs font-bold text-slate-400 shrink-0">Filter by Batch:</label>
-            <select id="batch_id" name="batch_id" onchange="this.form.submit()" class="form-input w-64">
-                <option value="">-- All Batches --</option>
-                {% for b in batches %}
-                <option value="{{ b.batch_id }}" {% if b.batch_id == selected_batch_id %}selected{% endif %}>
-                    Batch #{{ b.batch_id }} - {{ b.source_file_name }}
-                </option>
-                {% endfor %}
-            </select>
+    <div class="glass-panel p-4">
+        <form method="GET" action="{{ url_for('his_sync.errors') }}" class="flex flex-wrap items-center gap-3 w-full">
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" name="q" value="{{ q or '' }}" placeholder="Search UHID, patient name, or IP number..." 
+                    class="form-input text-xs w-full">
+            </div>
+            <div class="flex items-center gap-2">
+                <label for="batch_id" class="text-xs font-bold text-slate-400 shrink-0">Filter by Batch:</label>
+                <select id="batch_id" name="batch_id" onchange="this.form.submit()" class="form-input w-56 text-xs">
+                    <option value="">-- All Batches --</option>
+                    {% for b in batches %}
+                    <option value="{{ b.batch_id }}" {% if b.batch_id == selected_batch_id %}selected{% endif %}>
+                        Batch #{{ b.batch_id }} - {{ b.source_file_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn-primary text-xs py-2 px-3">Filter</button>
+            {% if q or selected_batch_id %}
+            <a href="{{ url_for('his_sync.errors') }}" class="btn-secondary text-xs py-2 px-3">Clear</a>
+            {% endif %}
         </form>
     </div>
 
     <!-- Error Rows Table -->
     <div class="glass-panel p-6">
-        <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Problematic Staging Records ({{ error_rows|length }})</h2>
+        <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">Problematic Staging Records ({{ pagination.total }})</h2>
 
         {% if error_rows %}
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
+        <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-lg border border-slate-800">
+            <table class="w-full text-left text-xs border-collapse">
                 <thead>
-                    <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
-                        <th class="pb-3">Staging ID</th>
-                        <th class="pb-3">Batch ID</th>
-                        <th class="pb-3">UHID / IP Number</th>
-                        <th class="pb-3">Company Name / Payer</th>
-                        <th class="pb-3">Validation Status</th>
-                        <th class="pb-3">Error Description</th>
-                        <th class="pb-3 text-right">Action</th>
+                    <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase sticky top-0 z-10 bg-slate-900">
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10">Staging ID</th>
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10">Batch ID</th>
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10">UHID / IP Number</th>
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10">Company Name / Payer</th>
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10">Validation Status</th>
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10">Error Description</th>
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10">
+                            <a href="{{ url_for('his_sync.errors', page=pagination.page, q=q, batch_id=selected_batch_id, sort_order='asc' if sort_order == 'desc' else 'desc') }}" class="hover:text-white inline-flex items-center gap-1">
+                                Created Date
+                                {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                            </a>
+                        </th>
+                        <th class="py-3 px-3 bg-slate-900 sticky top-0 z-10 text-right">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60 font-mono text-[11px]">
                     {% for row in error_rows %}
-                    <tr>
-                        <td class="py-3 font-bold text-slate-400">#{{ row.staging_id }}</td>
-                        <td class="py-3 text-indigo-400 font-bold">Batch #{{ row.batch_id }}</td>
-                        <td class="py-3 font-sans">
+                    <tr class="hover:bg-slate-800/30">
+                        <td class="py-3 px-3 font-bold text-slate-400">#{{ row.staging_id }}</td>
+                        <td class="py-3 px-3 text-indigo-400 font-bold">Batch #{{ row.batch_id }}</td>
+                        <td class="py-3 px-3 font-sans">
                             <div class="font-bold text-slate-200">{{ row.patientname or 'Unknown Patient' }}</div>
                             <div class="text-[10px] text-slate-400 font-mono">UHID: {{ row.uhid or 'N/A' }} | IP: {{ row.ipnumber or 'N/A' }}</div>
                         </td>
-                        <td class="py-3 font-sans text-amber-400 font-medium">{{ row.companyname or 'N/A' }}</td>
-                        <td class="py-3 font-sans">
+                        <td class="py-3 px-3 font-sans text-amber-400 font-medium">{{ row.companyname or 'N/A' }}</td>
+                        <td class="py-3 px-3 font-sans">
                             <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
                                 {% if row.validation_status == 'MAPPING_PENDING' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
                                 {% else %}bg-rose-500/10 text-rose-400 border border-rose-500/20{% endif %}">
                                 {{ row.validation_status }}
                             </span>
                         </td>
-                        <td class="py-3 text-rose-300 font-sans text-[11px] max-w-xs">{{ row.validation_error }}</td>
-                        <td class="py-3 text-right font-sans">
+                        <td class="py-3 px-3 text-rose-300 font-sans text-[11px] max-w-xs">{{ row.validation_error }}</td>
+                        <td class="py-3 px-3 font-sans text-[10px] text-slate-400">
+                            {{ row.created_at.strftime('%Y-%m-%d %H:%M') if row.created_at else 'N/A' }}
+                        </td>
+                        <td class="py-3 px-3 text-right font-sans">
                             {% if row.validation_status == 'MAPPING_PENDING' %}
                             <a href="{{ url_for('his_sync.mappings') }}" class="btn-secondary text-[10px] py-1 px-2.5">
                                 Map Payer &rarr;
@@ -84,7 +103,7 @@
             </table>
         </div>
         {% import "components/pagination.html" as pg %}
-        {{ pg.render_pagination(pagination, 'his_sync.errors', batch_id=selected_batch_id) }}
+        {{ pg.render_pagination(pagination, 'his_sync.errors', batch_id=selected_batch_id, q=q, sort_order=sort_order) }}
         {% else %}
         <div class="text-center py-10 text-slate-500 text-xs">
             No validation errors found in staging!

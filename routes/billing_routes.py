@@ -110,7 +110,30 @@ def bills():
     op_episodes_ready = OPEpisode.query.filter_by(unit_id=unit_id).all()
 
     page = request.args.get('page', 1, type=int)
-    bills_pagination = Bill.query.filter_by(unit_id=unit_id).order_by(Bill.bill_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    q = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    bill_type_filter = request.args.get('bill_type', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    bills_query = Bill.query.filter_by(unit_id=unit_id)
+    if q:
+        bills_query = bills_query.filter(
+            (Bill.bill_number.ilike(f'%{q}%')) |
+            (Bill.patient_name_snapshot.ilike(f'%{q}%'))
+        )
+    if status_filter:
+        bills_query = bills_query.filter(Bill.bill_status == status_filter)
+    if bill_type_filter:
+        bills_query = bills_query.filter(Bill.bill_type == bill_type_filter)
+
+    if sort_order == 'asc':
+        bills_query = bills_query.order_by(Bill.bill_date.asc(), Bill.bill_id.asc())
+    else:
+        bills_query = bills_query.order_by(Bill.bill_date.desc(), Bill.bill_id.desc())
+
+    bills_pagination = bills_query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     bills_list = bills_pagination.items
     for b in bills_list:
         b.update_lifecycle_status()
@@ -122,7 +145,17 @@ def bills():
         b.tat_info = calculate_tat_metrics(b.bill_date, submission_tat_days=tat_days, monthly_submission=monthly_sub)
     db.session.commit()
 
-    return render_template('billing/bills.html', bills=bills_list, pagination=bills_pagination, ip_admissions=ip_admissions_ready, op_episodes=op_episodes_ready)
+    return render_template(
+        'billing/bills.html',
+        bills=bills_list,
+        pagination=bills_pagination,
+        ip_admissions=ip_admissions_ready,
+        op_episodes=op_episodes_ready,
+        q=q,
+        status_filter=status_filter,
+        bill_type_filter=bill_type_filter,
+        sort_order=sort_order
+    )
 
 # --- BILL DETAIL & TIMELINE ---
 @billing_bp.route('/bills/<int:bill_id>')

@@ -26,7 +26,24 @@ def data_upload():
 
     categories = [{'key': k, 'label': v['label']} for k, v in DATA_CATEGORIES_CONFIG.items()]
     page = request.args.get('page', 1, type=int)
-    history_pagination = AdminUploadHistory.query.order_by(AdminUploadHistory.history_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    q = request.args.get('q', '').strip()
+    category_filter = request.args.get('category', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    query = AdminUploadHistory.query
+    if q:
+        query = query.filter((AdminUploadHistory.file_name.ilike(f'%{q}%')) | (AdminUploadHistory.data_category.ilike(f'%{q}%')))
+    if category_filter:
+        query = query.filter(AdminUploadHistory.data_category == category_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(AdminUploadHistory.uploaded_at.asc(), AdminUploadHistory.history_id.asc())
+    else:
+        query = query.order_by(AdminUploadHistory.uploaded_at.desc(), AdminUploadHistory.history_id.desc())
+
+    history_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     history_logs = history_pagination.items
     user_id = session.get('user_id')
     active_category = session.get('admin_upload_category')
@@ -40,7 +57,10 @@ def data_upload():
         categories=categories,
         history_logs=history_logs,
         pagination=history_pagination,
-        preview_data=preview_data
+        preview_data=preview_data,
+        q=q,
+        category_filter=category_filter,
+        sort_order=sort_order
     )
 
 # --- DOWNLOAD TEMPLATE ---

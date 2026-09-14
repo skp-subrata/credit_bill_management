@@ -263,8 +263,25 @@ def execute_sync(batch_id):
 @permission_required('manage_system')
 def history():
     page = request.args.get('page', 1, type=int)
-    batches_pagination = SyncBatch.query.order_by(SyncBatch.batch_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
-    return render_template('his_sync/history.html', batches=batches_pagination.items, pagination=batches_pagination)
+    q = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    query = SyncBatch.query
+    if q:
+        query = query.filter(SyncBatch.source_file_name.ilike(f'%{q}%'))
+    if status_filter:
+        query = query.filter(SyncBatch.batch_status == status_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(SyncBatch.uploaded_at.asc(), SyncBatch.batch_id.asc())
+    else:
+        query = query.order_by(SyncBatch.uploaded_at.desc(), SyncBatch.batch_id.desc())
+
+    batches_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('his_sync/history.html', batches=batches_pagination.items, pagination=batches_pagination, q=q, status_filter=status_filter, sort_order=sort_order)
 
 # --- 4. VALIDATION ERRORS & REPROCESS ---
 @his_sync_bp.route('/errors')
@@ -272,13 +289,34 @@ def history():
 @permission_required('manage_system')
 def errors():
     page = request.args.get('page', 1, type=int)
+    q = request.args.get('q', '').strip()
     batch_id = request.args.get('batch_id', type=int)
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
     query = HISIPStaging.query.filter(HISIPStaging.validation_status.in_(['INVALID', 'MAPPING_PENDING']))
     if batch_id:
         query = query.filter_by(batch_id=batch_id)
-    errors_pagination = query.order_by(HISIPStaging.staging_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    if q:
+        query = query.filter((HISIPStaging.patientname.ilike(f'%{q}%')) | (HISIPStaging.uhid.ilike(f'%{q}%')) | (HISIPStaging.ipnumber.ilike(f'%{q}%')))
+
+    if sort_order == 'asc':
+        query = query.order_by(HISIPStaging.created_at.asc(), HISIPStaging.staging_id.asc())
+    else:
+        query = query.order_by(HISIPStaging.created_at.desc(), HISIPStaging.staging_id.desc())
+
+    errors_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     batches = SyncBatch.query.order_by(SyncBatch.batch_id.desc()).all()
-    return render_template('his_sync/errors.html', error_rows=errors_pagination.items, pagination=errors_pagination, batches=batches, selected_batch_id=batch_id)
+    return render_template(
+        'his_sync/errors.html',
+        error_rows=errors_pagination.items,
+        pagination=errors_pagination,
+        batches=batches,
+        selected_batch_id=batch_id,
+        q=q,
+        sort_order=sort_order
+    )
 
 # --- 5. RECONCILIATION REPORT ---
 @his_sync_bp.route('/reconciliation')
@@ -339,11 +377,25 @@ def mappings():
         return redirect(url_for('his_sync.mappings'))
 
     page = request.args.get('page', 1, type=int)
-    mappings_pagination = HISPayerMapping.query.order_by(HISPayerMapping.mapping_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    q = request.args.get('q', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    query = HISPayerMapping.query
+    if q:
+        query = query.filter((HISPayerMapping.source_company_name.ilike(f'%{q}%')) | (HISPayerMapping.normalized_company_name.ilike(f'%{q}%')))
+
+    if sort_order == 'asc':
+        query = query.order_by(HISPayerMapping.created_at.asc(), HISPayerMapping.mapping_id.asc())
+    else:
+        query = query.order_by(HISPayerMapping.created_at.desc(), HISPayerMapping.mapping_id.desc())
+
+    mappings_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     payers = Payer.query.filter_by(status='ACTIVE').all()
     units = HospitalUnit.query.filter_by(status='ACTIVE').all()
 
-    return render_template('his_sync/mappings.html', mappings=mappings_pagination.items, pagination=mappings_pagination, payers=payers, units=units)
+    return render_template('his_sync/mappings.html', mappings=mappings_pagination.items, pagination=mappings_pagination, payers=payers, units=units, q=q, sort_order=sort_order)
 
 # --- 7. SYNC SETTINGS ---
 @his_sync_bp.route('/settings', methods=['GET', 'POST'])

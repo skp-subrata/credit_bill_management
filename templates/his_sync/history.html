@@ -17,36 +17,66 @@
     </div>
 
     <!-- History Table -->
-    <div class="glass-panel p-6">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-                <thead>
+    <div class="glass-panel p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Sync Batches ({{ batches|length }})</h2>
+            <a href="{{ url_for('his_sync.history', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter) }}"
+               class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors inline-flex items-center gap-1">
+                <span>📅 Sort Upload Date</span>
+                <span class="text-indigo-400 font-bold">{% if sort_order == 'asc' %}▲ ASC{% else %}▼ DESC{% endif %}</span>
+            </a>
+        </div>
+
+        <!-- Filter Controls Bar -->
+        <form method="GET" action="{{ url_for('his_sync.history') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+            <input type="text" name="q" value="{{ q or '' }}" placeholder="Search File Name..." class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+            <select name="status" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                <option value="">-- All Statuses --</option>
+                <option value="UPLOADED" {% if status_filter == 'UPLOADED' %}selected{% endif %}>UPLOADED</option>
+                <option value="VALIDATED" {% if status_filter == 'VALIDATED' %}selected{% endif %}>VALIDATED</option>
+                <option value="COMPLETED" {% if status_filter == 'COMPLETED' %}selected{% endif %}>COMPLETED</option>
+                <option value="PARTIALLY_COMPLETED" {% if status_filter == 'PARTIALLY_COMPLETED' %}selected{% endif %}>PARTIALLY_COMPLETED</option>
+            </select>
+            <div class="flex items-center gap-1.5">
+                <button type="submit" class="btn-primary text-xs py-1.5 px-3 flex-1">Filter</button>
+                <a href="{{ url_for('his_sync.history') }}" class="btn-secondary text-xs py-1.5 px-2.5">Reset</a>
+            </div>
+        </form>
+
+        <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-slate-800/80">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead class="sticky top-0 z-10 bg-slate-900 shadow-md">
                     <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
-                        <th class="pb-3">Batch ID</th>
-                        <th class="pb-3">File Name</th>
-                        <th class="pb-3">Upload Date</th>
-                        <th class="pb-3">Uploaded By</th>
-                        <th class="pb-3">Total Rows</th>
-                        <th class="pb-3">New / Updated</th>
-                        <th class="pb-3">Status</th>
-                        <th class="pb-3 text-right">Action</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Batch ID</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">File Name</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">
+                            <a href="{{ url_for('his_sync.history', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter) }}" class="inline-flex items-center gap-1 hover:text-indigo-400">
+                                <span>Upload Date</span>
+                                <span class="text-indigo-400">{% if sort_order == 'asc' %}▲{% else %}▼{% endif %}</span>
+                            </a>
+                        </th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Uploaded By</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Total Rows</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">New / Updated</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Status</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900 text-right">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
                     {% for b in batches %}
                     <tr>
-                        <td class="py-3 font-bold text-indigo-400">#{{ b.batch_id }}</td>
-                        <td class="py-3 font-bold text-slate-200">
+                        <td class="py-3 px-3 font-bold text-indigo-400">#{{ b.batch_id }}</td>
+                        <td class="py-3 px-3 font-bold text-slate-200">
                             <a href="{{ url_for('his_sync.batch_detail', batch_id=b.batch_id) }}" class="hover:underline">{{ b.source_file_name }}</a>
                         </td>
-                        <td class="py-3 text-slate-400">{{ b.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td class="py-3 text-slate-300 font-medium">{{ b.uploader.name }}</td>
-                        <td class="py-3 font-bold text-slate-200">{{ b.total_records }}</td>
-                        <td class="py-3 text-slate-300">
+                        <td class="py-3 px-3 text-slate-400">{{ b.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="py-3 px-3 text-slate-300 font-medium">{{ b.uploader.name }}</td>
+                        <td class="py-3 px-3 font-bold text-slate-200">{{ b.total_records }}</td>
+                        <td class="py-3 px-3 text-slate-300">
                             <span class="text-emerald-400 font-bold">+{{ b.new_records }}</span> / 
                             <span class="text-sky-400 font-bold">{{ b.updated_records }}</span>
                         </td>
-                        <td class="py-3">
+                        <td class="py-3 px-3">
                             <span class="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full 
                                 {% if b.batch_status == 'COMPLETED' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
                                 {% elif b.batch_status == 'PARTIALLY_COMPLETED' %}bg-amber-500/10 text-amber-400 border border-amber-500/20
@@ -55,7 +85,7 @@
                                 {{ b.batch_status }}
                             </span>
                         </td>
-                        <td class="py-3 text-right space-x-2">
+                        <td class="py-3 px-3 text-right space-x-2">
                             <a href="{{ url_for('his_sync.batch_detail', batch_id=b.batch_id) }}" class="btn-secondary text-[10px] py-1 px-2.5">
                                 View &rarr;
                             </a>
@@ -66,7 +96,7 @@
             </table>
         </div>
         {% import "components/pagination.html" as pg %}
-        {{ pg.render_pagination(pagination, 'his_sync.history') }}
+        {{ pg.render_pagination(pagination, 'his_sync.history', q=q, status=status_filter, sort_order=sort_order) }}
     </div>
 
 </div>

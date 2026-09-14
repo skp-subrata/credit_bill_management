@@ -182,37 +182,62 @@
 
     <!-- Upload History Table -->
     <div class="glass-panel p-6 space-y-4">
-        <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider border-b border-slate-800 pb-3">
-            Admin Upload History & Audit Log (Recent 50)
-        </h2>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">Admin Upload History & Audit Log ({{ history_logs|length }})</h2>
+            <a href="{{ url_for('admin_upload.data_upload', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, category=category_filter) }}"
+               class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors inline-flex items-center gap-1">
+                <span>📅 Sort Upload Date</span>
+                <span class="text-indigo-400 font-bold">{% if sort_order == 'asc' %}▲ ASC{% else %}▼ DESC{% endif %}</span>
+            </a>
+        </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-                <thead>
+        <!-- Filter Controls Bar -->
+        <form method="GET" action="{{ url_for('admin_upload.data_upload') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+            <input type="text" name="q" value="{{ q or '' }}" placeholder="Search File Name / Category..." class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+            <select name="category" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                <option value="">-- All Categories --</option>
+                {% for c in categories %}
+                <option value="{{ c.key }}" {% if category_filter == c.key %}selected{% endif %}>{{ c.label }}</option>
+                {% endfor %}
+            </select>
+            <div class="flex items-center gap-1.5">
+                <button type="submit" class="btn-primary text-xs py-1.5 px-3 flex-1">Filter</button>
+                <a href="{{ url_for('admin_upload.data_upload') }}" class="btn-secondary text-xs py-1.5 px-2.5">Reset</a>
+            </div>
+        </form>
+
+        <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-slate-800/80">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead class="sticky top-0 z-10 bg-slate-900 shadow-md">
                     <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
-                        <th class="pb-3">Date & Time</th>
-                        <th class="pb-3">Category</th>
-                        <th class="pb-3">File Name</th>
-                        <th class="pb-3">Total</th>
-                        <th class="pb-3">Success</th>
-                        <th class="pb-3">Failed</th>
-                        <th class="pb-3">Uploaded By</th>
-                        <th class="pb-3 text-right">Error Report</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">
+                            <a href="{{ url_for('admin_upload.data_upload', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, category=category_filter) }}" class="inline-flex items-center gap-1 hover:text-indigo-400">
+                                <span>Date & Time</span>
+                                <span class="text-indigo-400">{% if sort_order == 'asc' %}▲{% else %}▼{% endif %}</span>
+                            </a>
+                        </th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Category</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">File Name</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Total</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Success</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Failed</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900">Uploaded By</th>
+                        <th class="pb-3 pt-3 px-3 bg-slate-900 text-right">Error Report</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
                     {% for h in history_logs %}
                     <tr>
-                        <td class="py-3 font-mono text-slate-300">{{ h.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td class="py-3 font-bold text-purple-400">{{ h.data_category }}</td>
-                        <td class="py-3 font-mono text-slate-200">{{ h.file_name }}</td>
-                        <td class="py-3 font-bold text-slate-200">{{ h.total_records }}</td>
-                        <td class="py-3 font-bold text-emerald-400">{{ h.success_records }}</td>
-                        <td class="py-3 font-bold {% if h.failed_records > 0 %}text-rose-400{% else %}text-slate-400{% endif %}">
+                        <td class="py-3 px-3 font-mono text-slate-300">{{ h.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="py-3 px-3 font-bold text-purple-400">{{ h.data_category }}</td>
+                        <td class="py-3 px-3 font-mono text-slate-200">{{ h.file_name }}</td>
+                        <td class="py-3 px-3 font-bold text-slate-200">{{ h.total_records }}</td>
+                        <td class="py-3 px-3 font-bold text-emerald-400">{{ h.success_records }}</td>
+                        <td class="py-3 px-3 font-bold {% if h.failed_records > 0 %}text-rose-400{% else %}text-slate-400{% endif %}">
                             {{ h.failed_records }}
                         </td>
-                        <td class="py-3 font-medium text-slate-300">#{{ h.uploaded_by }}</td>
-                        <td class="py-3 text-right">
+                        <td class="py-3 px-3 font-medium text-slate-300">#{{ h.uploaded_by }}</td>
+                        <td class="py-3 px-3 text-right">
                             {% if h.failed_records > 0 %}
                             <a href="{{ url_for('admin_upload.download_errors', history_id=h.history_id) }}" class="btn-secondary text-[10px] py-1 px-2.5 text-rose-400">
                                 📥 Error Log
@@ -231,7 +256,7 @@
             </table>
         </div>
         {% import "components/pagination.html" as pg %}
-        {{ pg.render_pagination(pagination, 'admin_upload.data_upload') }}
+        {{ pg.render_pagination(pagination, 'admin_upload.data_upload', q=q, category=category_filter, sort_order=sort_order) }}
     </div>
 
 </div>

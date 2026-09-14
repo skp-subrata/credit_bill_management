@@ -47,11 +47,32 @@ def users():
         return redirect(url_for('users.users'))
 
     page = request.args.get('page', 1, type=int)
-    users_pagination = User.query.order_by(User.id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    q = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    query = User.query
+    if q:
+        query = query.filter(
+            (User.employee_id.ilike(f'%{q}%')) |
+            (User.name.ilike(f'%{q}%')) |
+            (User.email.ilike(f'%{q}%'))
+        )
+    if status_filter:
+        query = query.filter(User.status == status_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(User.created_at.asc(), User.id.asc())
+    else:
+        query = query.order_by(User.created_at.desc(), User.id.desc())
+
+    users_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     roles = Role.query.all()
     units = HospitalUnit.query.filter_by(status='ACTIVE').all()
 
-    return render_template('admin/users.html', users=users_pagination.items, pagination=users_pagination, roles=roles, units=units)
+    return render_template('admin/users.html', users=users_pagination.items, pagination=users_pagination, roles=roles, units=units, q=q, status_filter=status_filter, sort_order=sort_order)
 
 @user_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
 @login_required
@@ -75,6 +96,23 @@ def toggle_user_status(user_id):
 @permission_required('view_audit_logs')
 def audit_logs():
     page = request.args.get('page', 1, type=int)
-    logs_pagination = AuditLog.query.order_by(AuditLog.log_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
-    return render_template('admin/audit_logs.html', logs=logs_pagination.items, pagination=logs_pagination)
+    q = request.args.get('q', '').strip()
+    action_filter = request.args.get('action_type', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    query = AuditLog.query
+    if q:
+        query = query.filter((AuditLog.action.ilike(f'%{q}%')) | (AuditLog.entity_type.ilike(f'%{q}%')))
+    if action_filter:
+        query = query.filter(AuditLog.action == action_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(AuditLog.timestamp.asc(), AuditLog.log_id.asc())
+    else:
+        query = query.order_by(AuditLog.timestamp.desc(), AuditLog.log_id.desc())
+
+    logs_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('admin/audit_logs.html', logs=logs_pagination.items, pagination=logs_pagination, q=q, action_filter=action_filter, sort_order=sort_order)
 

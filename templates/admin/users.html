@@ -67,31 +67,57 @@
             </form>
         </div>
 
-        <!-- Users List Table -->
-        <div class="lg:col-span-2 glass-panel p-6">
-            <h2 class="text-sm font-bold text-slate-100 mb-4 uppercase tracking-wider">System Accounts ({{ users|length }})</h2>
+        <!-- User List Table -->
+        <div class="lg:col-span-2 glass-panel p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <h2 class="text-sm font-bold text-slate-100 uppercase tracking-wider">System Users ({{ users|length }})</h2>
+                <a href="{{ url_for('users.users', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter) }}"
+                   class="text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors inline-flex items-center gap-1">
+                    <span>📅 Sort Registration Date</span>
+                    <span class="text-indigo-400 font-bold">{% if sort_order == 'asc' %}▲ ASC{% else %}▼ DESC{% endif %}</span>
+                </a>
+            </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-xs">
-                    <thead>
+            <!-- Filter Controls Bar -->
+            <form method="GET" action="{{ url_for('users.users') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800 text-xs">
+                <input type="text" name="q" value="{{ q or '' }}" placeholder="Search Employee ID / Name / Email..." class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                <select name="status" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-500 font-medium">
+                    <option value="">-- All Statuses --</option>
+                    <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+                    <option value="INACTIVE" {% if status_filter == 'INACTIVE' %}selected{% endif %}>INACTIVE</option>
+                </select>
+                <div class="flex items-center gap-1.5">
+                    <button type="submit" class="btn-primary text-xs py-1.5 px-3 flex-1">Filter</button>
+                    <a href="{{ url_for('users.users') }}" class="btn-secondary text-xs py-1.5 px-2.5">Reset</a>
+                </div>
+            </form>
+
+            <div class="overflow-x-auto overflow-y-auto max-h-[500px] rounded-xl border border-slate-800/80">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead class="sticky top-0 z-10 bg-slate-900 shadow-md">
                         <tr class="border-b border-slate-800 text-slate-400 font-bold uppercase">
-                            <th class="pb-3">Employee ID</th>
-                            <th class="pb-3">Name & Email</th>
-                            <th class="pb-3">Role</th>
-                            <th class="pb-3">Assigned Unit</th>
-                            <th class="pb-3">Status</th>
-                            <th class="pb-3 text-right">Action</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">
+                                <a href="{{ url_for('users.users', page=1, sort_order='asc' if sort_order == 'desc' else 'desc', q=q, status=status_filter) }}" class="inline-flex items-center gap-1 hover:text-indigo-400">
+                                    <span>Employee ID</span>
+                                    <span class="text-indigo-400">{% if sort_order == 'asc' %}▲{% else %}▼{% endif %}</span>
+                                </a>
+                            </th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Name & Email</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Role</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Assigned Unit</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900">Status</th>
+                            <th class="pb-3 pt-3 px-3 bg-slate-900 text-right">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-800/60">
                         {% for u in users %}
                         <tr>
-                            <td class="py-3 font-bold text-indigo-400">{{ u.employee_id }}</td>
-                            <td class="py-3 font-medium text-slate-200">
+                            <td class="py-3 px-3 font-bold text-indigo-400">{{ u.employee_id }}</td>
+                            <td class="py-3 px-3 font-medium text-slate-200">
                                 {{ u.name }}
                                 <div class="text-[10px] text-slate-400">{{ u.email }}</div>
                             </td>
-                            <td class="py-3">
+                            <td class="py-3 px-3">
                                 <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
                                     {% if u.role.role_code == 'super_admin' %}bg-indigo-500/10 text-indigo-400 border border-indigo-500/20
                                     {% elif u.role.role_code == 'admin' %}bg-purple-500/10 text-purple-400 border border-purple-500/20
@@ -99,15 +125,15 @@
                                     {{ u.role.role_name }}
                                 </span>
                             </td>
-                            <td class="py-3 text-slate-400">{{ u.hospital_unit.unit_code if u.hospital_unit else 'All Units' }}</td>
-                            <td class="py-3">
+                            <td class="py-3 px-3 text-slate-400">{{ u.hospital_unit.unit_code if u.hospital_unit else 'All Units' }}</td>
+                            <td class="py-3 px-3">
                                 <span class="px-2 py-0.5 text-[10px] font-bold rounded-full 
                                     {% if u.status == 'ACTIVE' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/20
                                     {% else %}bg-rose-500/10 text-rose-400 border border-rose-500/20{% endif %}">
                                     {{ u.status }}
                                 </span>
                             </td>
-                            <td class="py-3 text-right">
+                            <td class="py-3 px-3 text-right">
                                 {% if u.id != session.get('user_id') %}
                                 <form method="POST" action="{{ url_for('users.toggle_user_status', user_id=u.id) }}" class="inline">
                                     <button type="submit" class="btn-secondary text-[10px] py-1 px-2.5">
@@ -124,10 +150,9 @@
                 </table>
             </div>
             {% import "components/pagination.html" as pg %}
-            {{ pg.render_pagination(pagination, 'users.users') }}
+            {{ pg.render_pagination(pagination, 'users.users', q=q, status=status_filter, sort_order=sort_order) }}
         </div>
     </div>
 
 </div>
 {% endblock %}
-

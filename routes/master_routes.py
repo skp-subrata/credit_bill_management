@@ -44,8 +44,25 @@ def units():
         return redirect(url_for('masters.units'))
 
     page = request.args.get('page', 1, type=int)
-    units_pagination = HospitalUnit.query.order_by(HospitalUnit.unit_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
-    return render_template('masters/units.html', units=units_pagination.items, pagination=units_pagination)
+    q = request.args.get('q', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    query = HospitalUnit.query
+    if q:
+        query = query.filter(
+            (HospitalUnit.unit_code.ilike(f'%{q}%')) |
+            (HospitalUnit.hospital_name.ilike(f'%{q}%')) |
+            (HospitalUnit.city.ilike(f'%{q}%'))
+        )
+    if sort_order == 'asc':
+        query = query.order_by(HospitalUnit.unit_id.asc())
+    else:
+        query = query.order_by(HospitalUnit.unit_id.desc())
+
+    units_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('masters/units.html', units=units_pagination.items, pagination=units_pagination, q=q, sort_order=sort_order)
 
 # --- Patients Registry ---
 @master_bp.route('/patients', methods=['GET', 'POST'])
@@ -82,13 +99,23 @@ def patients():
         return redirect(url_for('masters.patients'))
 
     page = request.args.get('page', 1, type=int)
-    search = request.args.get('search', '').strip()
+    search = request.args.get('search', '').strip() or request.args.get('q', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
     query = Patient.query
     if search:
         query = query.filter((Patient.uhid.ilike(f'%{search}%')) | (Patient.patient_name.ilike(f'%{search}%')) | (Patient.phone.ilike(f'%{search}%')))
-    patients_pagination = query.order_by(Patient.patient_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
 
-    return render_template('masters/patients.html', patients=patients_pagination.items, pagination=patients_pagination, search=search)
+    if sort_order == 'asc':
+        query = query.order_by(Patient.created_at.asc(), Patient.patient_id.asc())
+    else:
+        query = query.order_by(Patient.created_at.desc(), Patient.patient_id.desc())
+
+    patients_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+
+    return render_template('masters/patients.html', patients=patients_pagination.items, pagination=patients_pagination, search=search, q=search, sort_order=sort_order)
 
 # --- Payers Master ---
 @master_bp.route('/payers', methods=['GET', 'POST'])
@@ -125,8 +152,25 @@ def payers():
         return redirect(url_for('masters.payers'))
 
     page = request.args.get('page', 1, type=int)
-    payers_pagination = Payer.query.order_by(Payer.payer_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
-    return render_template('masters/payers.html', payers=payers_pagination.items, pagination=payers_pagination)
+    q = request.args.get('q', '').strip()
+    payer_type_filter = request.args.get('payer_type', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
+
+    query = Payer.query
+    if q:
+        query = query.filter((Payer.payer_code.ilike(f'%{q}%')) | (Payer.payer_name.ilike(f'%{q}%')))
+    if payer_type_filter:
+        query = query.filter(Payer.payer_type == payer_type_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(Payer.created_at.asc(), Payer.payer_id.asc())
+    else:
+        query = query.order_by(Payer.created_at.desc(), Payer.payer_id.desc())
+
+    payers_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('masters/payers.html', payers=payers_pagination.items, pagination=payers_pagination, q=q, payer_type_filter=payer_type_filter, sort_order=sort_order)
 
 # --- Hospital-Payer Configurations ---
 @master_bp.route('/hospital-payers', methods=['GET', 'POST'])
@@ -183,7 +227,34 @@ def hospital_payers():
     payers_list = Payer.query.filter_by(status='ACTIVE').all()
 
     page = request.args.get('page', 1, type=int)
-    hp_pagination = HospitalPayer.query.order_by(HospitalPayer.hospital_payer_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    q = request.args.get('q', '').strip()
+    billing_type_filter = request.args.get('billing_type', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
 
-    return render_template('masters/hospital_payers.html', units=units_list, payers=payers_list, hp_configs=hp_pagination.items, pagination=hp_pagination, active_unit_id=active_unit_id)
+    query = HospitalPayer.query
+    if q:
+        query = query.filter(HospitalPayer.payer_code_at_unit.ilike(f'%{q}%'))
+    if billing_type_filter:
+        query = query.filter(HospitalPayer.billing_type == billing_type_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(HospitalPayer.created_at.asc(), HospitalPayer.hospital_payer_id.asc())
+    else:
+        query = query.order_by(HospitalPayer.created_at.desc(), HospitalPayer.hospital_payer_id.desc())
+
+    hp_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+
+    return render_template(
+        'masters/hospital_payers.html',
+        units=units_list,
+        payers=payers_list,
+        hp_configs=hp_pagination.items,
+        pagination=hp_pagination,
+        active_unit_id=active_unit_id,
+        q=q,
+        billing_type_filter=billing_type_filter,
+        sort_order=sort_order
+    )
 

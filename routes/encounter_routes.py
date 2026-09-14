@@ -64,9 +64,42 @@ def ip_admissions():
     hospital_payers = HospitalPayer.query.filter_by(unit_id=unit_id, status='ACTIVE').all()
 
     page = request.args.get('page', 1, type=int)
-    admissions_pagination = IPAdmission.query.filter_by(unit_id=unit_id).order_by(IPAdmission.admission_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    q = request.args.get('q', '').strip()
+    status_filter = request.args.get('status', '').strip()
+    bill_type_filter = request.args.get('bill_type', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
 
-    return render_template('encounters/ip_admissions.html', admissions=admissions_pagination.items, pagination=admissions_pagination, patients=patients, hospital_payers=hospital_payers)
+    query = IPAdmission.query.filter_by(unit_id=unit_id)
+    if q:
+        query = query.filter(
+            (IPAdmission.ip_number.ilike(f'%{q}%')) |
+            (IPAdmission.patient_name_snapshot.ilike(f'%{q}%'))
+        )
+    if status_filter:
+        query = query.filter(IPAdmission.admission_status == status_filter)
+    if bill_type_filter:
+        query = query.filter(IPAdmission.bill_type == bill_type_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(IPAdmission.admission_date.asc(), IPAdmission.admission_id.asc())
+    else:
+        query = query.order_by(IPAdmission.admission_date.desc(), IPAdmission.admission_id.desc())
+
+    admissions_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+
+    return render_template(
+        'encounters/ip_admissions.html',
+        admissions=admissions_pagination.items,
+        pagination=admissions_pagination,
+        patients=patients,
+        hospital_payers=hospital_payers,
+        q=q,
+        status_filter=status_filter,
+        bill_type_filter=bill_type_filter,
+        sort_order=sort_order
+    )
 
 # --- IP DISCHARGE ---
 @encounter_bp.route('/ip/admissions/<int:admission_id>/discharge', methods=['POST'])
@@ -158,7 +191,36 @@ def op_episodes():
     hospital_payers = HospitalPayer.query.filter_by(unit_id=unit_id, status='ACTIVE').all()
 
     page = request.args.get('page', 1, type=int)
-    episodes_pagination = OPEpisode.query.filter_by(unit_id=unit_id).order_by(OPEpisode.episode_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    q = request.args.get('q', '').strip()
+    department_filter = request.args.get('department', '').strip()
+    sort_order = request.args.get('sort_order', 'desc').lower()
+    if sort_order not in ('asc', 'desc'):
+        sort_order = 'desc'
 
-    return render_template('encounters/op_episodes.html', episodes=episodes_pagination.items, pagination=episodes_pagination, patients=patients, hospital_payers=hospital_payers)
+    query = OPEpisode.query.filter_by(unit_id=unit_id)
+    if q:
+        query = query.filter(
+            (OPEpisode.op_number.ilike(f'%{q}%')) |
+            (OPEpisode.patient_name_snapshot.ilike(f'%{q}%'))
+        )
+    if department_filter:
+        query = query.filter(OPEpisode.department == department_filter)
+
+    if sort_order == 'asc':
+        query = query.order_by(OPEpisode.visit_date.asc(), OPEpisode.episode_id.asc())
+    else:
+        query = query.order_by(OPEpisode.visit_date.desc(), OPEpisode.episode_id.desc())
+
+    episodes_pagination = query.paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+
+    return render_template(
+        'encounters/op_episodes.html',
+        episodes=episodes_pagination.items,
+        pagination=episodes_pagination,
+        patients=patients,
+        hospital_payers=hospital_payers,
+        q=q,
+        department_filter=department_filter,
+        sort_order=sort_order
+    )
 
