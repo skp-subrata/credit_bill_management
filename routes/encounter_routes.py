@@ -4,6 +4,7 @@ from database import db
 from models import IPAdmission, IPDischarge, OPEpisode, Patient, HospitalUnit, Payer, HospitalPayer
 from utils.auth import login_required, permission_required, get_current_user
 from utils.audit import log_audit
+from config import Config
 
 encounter_bp = Blueprint('encounters', __name__, url_prefix='/encounters')
 
@@ -62,9 +63,10 @@ def ip_admissions():
     patients = Patient.query.order_by(Patient.patient_name).all()
     hospital_payers = HospitalPayer.query.filter_by(unit_id=unit_id, status='ACTIVE').all()
 
-    admissions_list = IPAdmission.query.filter_by(unit_id=unit_id).order_by(IPAdmission.admission_id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    admissions_pagination = IPAdmission.query.filter_by(unit_id=unit_id).order_by(IPAdmission.admission_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
 
-    return render_template('encounters/ip_admissions.html', admissions=admissions_list, patients=patients, hospital_payers=hospital_payers)
+    return render_template('encounters/ip_admissions.html', admissions=admissions_pagination.items, pagination=admissions_pagination, patients=patients, hospital_payers=hospital_payers)
 
 # --- IP DISCHARGE ---
 @encounter_bp.route('/ip/admissions/<int:admission_id>/discharge', methods=['POST'])
@@ -155,7 +157,8 @@ def op_episodes():
     patients = Patient.query.order_by(Patient.patient_name).all()
     hospital_payers = HospitalPayer.query.filter_by(unit_id=unit_id, status='ACTIVE').all()
 
-    episodes_list = OPEpisode.query.filter_by(unit_id=unit_id).order_by(OPEpisode.episode_id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    episodes_pagination = OPEpisode.query.filter_by(unit_id=unit_id).order_by(OPEpisode.episode_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
 
-    return render_template('encounters/op_episodes.html', episodes=episodes_list, patients=patients, hospital_payers=hospital_payers)
+    return render_template('encounters/op_episodes.html', episodes=episodes_pagination.items, pagination=episodes_pagination, patients=patients, hospital_payers=hospital_payers)
 

@@ -8,6 +8,7 @@ from models import (
 from utils.auth import login_required, permission_required, get_current_user
 from utils.audit import log_audit
 
+from config import Config
 from utils.tat import calculate_tat_metrics, get_dispatch_date_bounds, validate_dispatch_date
 
 billing_bp = Blueprint('billing', __name__, url_prefix='/billing')
@@ -108,7 +109,9 @@ def bills():
     ip_admissions_ready = IPAdmission.query.filter_by(unit_id=unit_id).all()
     op_episodes_ready = OPEpisode.query.filter_by(unit_id=unit_id).all()
 
-    bills_list = Bill.query.filter_by(unit_id=unit_id).order_by(Bill.bill_id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    bills_pagination = Bill.query.filter_by(unit_id=unit_id).order_by(Bill.bill_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    bills_list = bills_pagination.items
     for b in bills_list:
         b.update_lifecycle_status()
         tat_days = 15
@@ -119,7 +122,7 @@ def bills():
         b.tat_info = calculate_tat_metrics(b.bill_date, submission_tat_days=tat_days, monthly_submission=monthly_sub)
     db.session.commit()
 
-    return render_template('billing/bills.html', bills=bills_list, ip_admissions=ip_admissions_ready, op_episodes=op_episodes_ready)
+    return render_template('billing/bills.html', bills=bills_list, pagination=bills_pagination, ip_admissions=ip_admissions_ready, op_episodes=op_episodes_ready)
 
 # --- BILL DETAIL & TIMELINE ---
 @billing_bp.route('/bills/<int:bill_id>')

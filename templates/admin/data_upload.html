@@ -230,6 +230,8 @@
                 </tbody>
             </table>
         </div>
+        {% import "components/pagination.html" as pg %}
+        {{ pg.render_pagination(pagination, 'admin_upload.data_upload') }}
     </div>
 
 </div>

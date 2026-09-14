@@ -185,6 +185,8 @@
                     </tbody>
                 </table>
             </div>
+            {% import "components/pagination.html" as pg %}
+            {{ pg.render_pagination(pagination, 'billing.bills') }}
         </div>
     </div>
 

@@ -96,6 +96,8 @@
                     </tbody>
                 </table>
             </div>
+            {% import "components/pagination.html" as pg %}
+            {{ pg.render_pagination(pagination, 'masters.payers') }}
         </div>
     </div>
 

@@ -2,6 +2,7 @@ import json, io, csv
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, send_file, jsonify, Response
 from database import db
 from models import AdminUploadHistory, User
+from config import Config
 from utils.auth import login_required, permission_required
 from utils.admin_upload_engine import (
     DATA_CATEGORIES_CONFIG, generate_template, validate_admin_upload, execute_admin_import,
@@ -24,7 +25,9 @@ def data_upload():
         return redirect(url_for('main.dashboard'))
 
     categories = [{'key': k, 'label': v['label']} for k, v in DATA_CATEGORIES_CONFIG.items()]
-    history_logs = AdminUploadHistory.query.order_by(AdminUploadHistory.history_id.desc()).limit(50).all()
+    page = request.args.get('page', 1, type=int)
+    history_pagination = AdminUploadHistory.query.order_by(AdminUploadHistory.history_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    history_logs = history_pagination.items
     user_id = session.get('user_id')
     active_category = session.get('admin_upload_category')
 
@@ -36,6 +39,7 @@ def data_upload():
         'admin/data_upload.html',
         categories=categories,
         history_logs=history_logs,
+        pagination=history_pagination,
         preview_data=preview_data
     )
 
@@ -88,13 +92,16 @@ def validate_file():
     save_upload_stage(user_id, category_key, report)
     session['admin_upload_category'] = category_key
 
-    history_logs = AdminUploadHistory.query.order_by(AdminUploadHistory.history_id.desc()).limit(50).all()
+    page = request.args.get('page', 1, type=int)
+    history_pagination = AdminUploadHistory.query.order_by(AdminUploadHistory.history_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    history_logs = history_pagination.items
     categories = [{'key': k, 'label': v['label']} for k, v in DATA_CATEGORIES_CONFIG.items()]
 
     return render_template(
         'admin/data_upload.html',
         categories=categories,
         history_logs=history_logs,
+        pagination=history_pagination,
         preview_data=report
     )
 

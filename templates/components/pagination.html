@@ -1,0 +1,53 @@
+{% macro render_pagination(pagination, endpoint) %}
+{% if pagination and pagination.pages > 1 %}
+<div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800 text-xs">
+    <div class="text-slate-400">
+        Showing <span class="font-bold text-slate-200">{{ ((pagination.page - 1) * pagination.per_page) + 1 }}</span>
+        to <span class="font-bold text-slate-200">{{ [pagination.page * pagination.per_page, pagination.total]|min }}</span>
+        of <span class="font-bold text-slate-200">{{ pagination.total }}</span> entries
+    </div>
+    <div class="flex items-center gap-1">
+        {% set args = kwargs or {} %}
+        {% if pagination.has_prev %}
+            <a href="{{ url_for(endpoint, page=pagination.prev_num, **args) }}" class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors">
+                &laquo; Prev
+            </a>
+        {% else %}
+            <span class="px-2.5 py-1.5 rounded-lg border border-slate-800 bg-slate-900/50 text-slate-600 cursor-not-allowed">
+                &laquo; Prev
+            </span>
+        {% endif %}
+
+        {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+                {% if p == pagination.page %}
+                    <span class="px-3 py-1.5 rounded-lg bg-indigo-600 font-bold text-white shadow-sm">
+                        {{ p }}
+                    </span>
+                {% else %}
+                    <a href="{{ url_for(endpoint, page=p, **args) }}" class="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors">
+                        {{ p }}
+                    </a>
+                {% endif %}
+            {% else %}
+                <span class="px-2 py-1.5 text-slate-500">...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+            <a href="{{ url_for(endpoint, page=pagination.next_num, **args) }}" class="px-2.5 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors">
+                Next &raquo;
+            </a>
+        {% else %}
+            <span class="px-2.5 py-1.5 rounded-lg border border-slate-800 bg-slate-900/50 text-slate-600 cursor-not-allowed">
+                Next &raquo;
+            </span>
+        {% endif %}
+    </div>
+</div>
+{% elif pagination and pagination.total > 0 %}
+<div class="flex items-center justify-between pt-4 border-t border-slate-800 text-xs text-slate-400">
+    <div>Showing all <span class="font-bold text-slate-200">{{ pagination.total }}</span> entries</div>
+</div>
+{% endif %}
+{% endmacro %}

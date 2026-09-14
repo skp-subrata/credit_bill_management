@@ -65,6 +65,8 @@
                 </tbody>
             </table>
         </div>
+        {% import "components/pagination.html" as pg %}
+        {{ pg.render_pagination(pagination, 'his_sync.history') }}
     </div>
 
 </div>

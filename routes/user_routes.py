@@ -4,6 +4,7 @@ from database import db
 from models import User, Role, HospitalUnit, AuditLog
 from utils.auth import login_required, permission_required, get_current_user
 from utils.audit import log_audit
+from config import Config
 
 user_bp = Blueprint('users', __name__, url_prefix='/admin')
 
@@ -45,11 +46,12 @@ def users():
         flash(f"User '{name}' ({employee_id}) created successfully!", 'success')
         return redirect(url_for('users.users'))
 
-    users_list = User.query.order_by(User.id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    users_pagination = User.query.order_by(User.id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     roles = Role.query.all()
     units = HospitalUnit.query.filter_by(status='ACTIVE').all()
 
-    return render_template('admin/users.html', users=users_list, roles=roles, units=units)
+    return render_template('admin/users.html', users=users_pagination.items, pagination=users_pagination, roles=roles, units=units)
 
 @user_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
 @login_required
@@ -72,6 +74,7 @@ def toggle_user_status(user_id):
 @login_required
 @permission_required('view_audit_logs')
 def audit_logs():
-    logs = AuditLog.query.order_by(AuditLog.log_id.desc()).limit(200).all()
-    return render_template('admin/audit_logs.html', logs=logs)
+    page = request.args.get('page', 1, type=int)
+    logs_pagination = AuditLog.query.order_by(AuditLog.log_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('admin/audit_logs.html', logs=logs_pagination.items, pagination=logs_pagination)
 

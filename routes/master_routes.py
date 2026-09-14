@@ -3,6 +3,7 @@ from database import db
 from models import HospitalUnit, Patient, Payer, HospitalPayer
 from utils.auth import login_required, permission_required, get_current_user
 from utils.audit import log_audit
+from config import Config
 
 master_bp = Blueprint('masters', __name__, url_prefix='/masters')
 
@@ -42,8 +43,9 @@ def units():
         flash(f"Hospital Unit '{hospital_name}' created successfully!", 'success')
         return redirect(url_for('masters.units'))
 
-    units_list = HospitalUnit.query.order_by(HospitalUnit.unit_id.desc()).all()
-    return render_template('masters/units.html', units=units_list)
+    page = request.args.get('page', 1, type=int)
+    units_pagination = HospitalUnit.query.order_by(HospitalUnit.unit_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('masters/units.html', units=units_pagination.items, pagination=units_pagination)
 
 # --- Patients Registry ---
 @master_bp.route('/patients', methods=['GET', 'POST'])
@@ -79,13 +81,14 @@ def patients():
         flash(f"Patient '{patient_name}' (UHID: {uhid}) registered successfully!", 'success')
         return redirect(url_for('masters.patients'))
 
+    page = request.args.get('page', 1, type=int)
     search = request.args.get('search', '').strip()
     query = Patient.query
     if search:
         query = query.filter((Patient.uhid.ilike(f'%{search}%')) | (Patient.patient_name.ilike(f'%{search}%')) | (Patient.phone.ilike(f'%{search}%')))
-    patients_list = query.order_by(Patient.patient_id.desc()).limit(50).all()
+    patients_pagination = query.order_by(Patient.patient_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
 
-    return render_template('masters/patients.html', patients=patients_list, search=search)
+    return render_template('masters/patients.html', patients=patients_pagination.items, pagination=patients_pagination, search=search)
 
 # --- Payers Master ---
 @master_bp.route('/payers', methods=['GET', 'POST'])
@@ -121,8 +124,9 @@ def payers():
         flash(f"Payer '{payer_name}' created successfully!", 'success')
         return redirect(url_for('masters.payers'))
 
-    payers_list = Payer.query.order_by(Payer.payer_id.desc()).all()
-    return render_template('masters/payers.html', payers=payers_list)
+    page = request.args.get('page', 1, type=int)
+    payers_pagination = Payer.query.order_by(Payer.payer_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('masters/payers.html', payers=payers_pagination.items, pagination=payers_pagination)
 
 # --- Hospital-Payer Configurations ---
 @master_bp.route('/hospital-payers', methods=['GET', 'POST'])
@@ -178,7 +182,8 @@ def hospital_payers():
     units_list = HospitalUnit.query.filter_by(status='ACTIVE').all()
     payers_list = Payer.query.filter_by(status='ACTIVE').all()
 
-    hp_configs = HospitalPayer.query.order_by(HospitalPayer.hospital_payer_id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    hp_pagination = HospitalPayer.query.order_by(HospitalPayer.hospital_payer_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
 
-    return render_template('masters/hospital_payers.html', units=units_list, payers=payers_list, hp_configs=hp_configs, active_unit_id=active_unit_id)
+    return render_template('masters/hospital_payers.html', units=units_list, payers=payers_list, hp_configs=hp_pagination.items, pagination=hp_pagination, active_unit_id=active_unit_id)
 

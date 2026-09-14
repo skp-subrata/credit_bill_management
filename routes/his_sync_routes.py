@@ -15,6 +15,7 @@ from utils.his_sync.normalizers import normalize_string
 from utils.his_sync.validator import validate_staging_batch
 from utils.his_sync.sync_engine import process_sync_batch
 from utils.audit import log_audit
+from config import Config
 
 his_sync_bp = Blueprint('his_sync', __name__, url_prefix='/his-sync')
 
@@ -261,21 +262,23 @@ def execute_sync(batch_id):
 @login_required
 @permission_required('manage_system')
 def history():
-    batches = SyncBatch.query.order_by(SyncBatch.batch_id.desc()).all()
-    return render_template('his_sync/history.html', batches=batches)
+    page = request.args.get('page', 1, type=int)
+    batches_pagination = SyncBatch.query.order_by(SyncBatch.batch_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
+    return render_template('his_sync/history.html', batches=batches_pagination.items, pagination=batches_pagination)
 
 # --- 4. VALIDATION ERRORS & REPROCESS ---
 @his_sync_bp.route('/errors')
 @login_required
 @permission_required('manage_system')
 def errors():
+    page = request.args.get('page', 1, type=int)
     batch_id = request.args.get('batch_id', type=int)
     query = HISIPStaging.query.filter(HISIPStaging.validation_status.in_(['INVALID', 'MAPPING_PENDING']))
     if batch_id:
         query = query.filter_by(batch_id=batch_id)
-    error_rows = query.order_by(HISIPStaging.staging_id.desc()).limit(200).all()
+    errors_pagination = query.order_by(HISIPStaging.staging_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     batches = SyncBatch.query.order_by(SyncBatch.batch_id.desc()).all()
-    return render_template('his_sync/errors.html', error_rows=error_rows, batches=batches, selected_batch_id=batch_id)
+    return render_template('his_sync/errors.html', error_rows=errors_pagination.items, pagination=errors_pagination, batches=batches, selected_batch_id=batch_id)
 
 # --- 5. RECONCILIATION REPORT ---
 @his_sync_bp.route('/reconciliation')
@@ -335,11 +338,12 @@ def mappings():
         db.session.commit()
         return redirect(url_for('his_sync.mappings'))
 
-    payer_mappings = HISPayerMapping.query.order_by(HISPayerMapping.mapping_id.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    mappings_pagination = HISPayerMapping.query.order_by(HISPayerMapping.mapping_id.desc()).paginate(page=page, per_page=Config.ITEMS_PER_PAGE, error_out=False)
     payers = Payer.query.filter_by(status='ACTIVE').all()
     units = HospitalUnit.query.filter_by(status='ACTIVE').all()
 
-    return render_template('his_sync/mappings.html', mappings=payer_mappings, payers=payers, units=units)
+    return render_template('his_sync/mappings.html', mappings=mappings_pagination.items, pagination=mappings_pagination, payers=payers, units=units)
 
 # --- 7. SYNC SETTINGS ---
 @his_sync_bp.route('/settings', methods=['GET', 'POST'])
