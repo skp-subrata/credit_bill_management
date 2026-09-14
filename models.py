@@ -252,13 +252,15 @@ class Bill(db.Model):
         6. PAID (Full payment settled)
         7. CLOSED (Formally closed/archived)
         """
-        if self.bill_status in ('CLOSED', 'CANCELLED'):
-            return self.bill_status
+        if self.bill_status == 'CLOSED':
+            return 'CLOSED'
 
-        # Check for CANCELLED verification
-        has_cancelled_verification = any(v.verification_status in ('CANCELLED', 'BILL_CANCELLED') for v in (self.verifications or []))
-        if has_cancelled_verification:
-            return 'CANCELLED'
+        # Check latest verification status
+        verifs = self.verifications or []
+        if verifs and len(verifs) > 0:
+            latest_v = verifs[-1]
+            if latest_v.verification_status in ('CANCELLED', 'BILL_CANCELLED'):
+                return 'CANCELLED'
 
         # Stage 6: PAID (full settlement)
         if self.payments and len(self.payments) > 0 and self.outstanding_amount <= 0:
@@ -278,21 +280,18 @@ class Bill(db.Model):
             return 'DISPATCHED'
 
         # Stage 2: VERIFIED (internal audit approved)
-        has_approved_verification = any(v.verification_status == 'VERIFIED' for v in (self.verifications or []))
-        if has_approved_verification:
-            return 'VERIFIED'
-
-        has_rejected_verification = any(v.verification_status == 'REJECTED' for v in (self.verifications or []))
-        if has_rejected_verification:
-            return 'VERIFICATION_PENDING'
+        if verifs and len(verifs) > 0:
+            latest_v = verifs[-1]
+            if latest_v.verification_status == 'VERIFIED':
+                return 'VERIFIED'
+            elif latest_v.verification_status == 'REJECTED':
+                return 'VERIFICATION_PENDING'
 
         return 'GENERATED'
 
     @property
     def is_verified(self):
         """Returns True if the bill has been verified or is at/past the VERIFIED lifecycle stage."""
-        if self.bill_status == 'CANCELLED':
-            return False
         verifs = self.verifications or []
         if verifs and len(verifs) > 0:
             latest_v = verifs[-1]
@@ -300,10 +299,10 @@ class Bill(db.Model):
                 return False
             if latest_v.verification_status == 'VERIFIED':
                 return True
-        if any(v.verification_status in ('CANCELLED', 'BILL_CANCELLED') for v in (self.verifications or [])):
+
+        if self.bill_status == 'CANCELLED':
             return False
-        if any(v.verification_status == 'VERIFIED' for v in (self.verifications or [])):
-            return True
+
         return self.bill_status in ('VERIFIED', 'DISPATCHED', 'QUERIED', 'PARTIALLY_PAID', 'PAID', 'CLOSED')
 
     @property
@@ -311,9 +310,6 @@ class Bill(db.Model):
         """
         Dynamically derives the Dispatch Tracker status based on the latest Internal Verification and Dispatch state.
         """
-        if self.bill_status == 'CANCELLED':
-            return 'CANCELLED'
-
         verifs = self.verifications or []
         if verifs and len(verifs) > 0:
             latest_v = verifs[-1]
@@ -321,6 +317,9 @@ class Bill(db.Model):
                 return 'CANCELLED'
             elif latest_v.verification_status == 'REJECTED':
                 return 'REJECTED'
+
+        if self.bill_status == 'CANCELLED':
+            return 'CANCELLED'
 
         dispatches = self.dispatches or []
         if dispatches and len(dispatches) > 0:
