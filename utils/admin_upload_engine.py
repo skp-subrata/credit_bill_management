@@ -386,7 +386,15 @@ def _validate_master_dependencies(category_key, row):
             if not Payer.query.filter_by(payer_code=payer_code).first():
                 return f"Payer Code '{payer_code}' does not exist in Payer Master."
 
-    elif category_key in ('bill_verifications', 'bill_dispatch', 'bill_queries', 'bill_payments'):
+    elif category_key == 'bill_dispatch':
+        bill_number = row.get('bill_number')
+        bill = Bill.query.filter_by(bill_number=bill_number).first()
+        if not bill:
+            return f"Bill Number '{bill_number}' does not exist in Bills Master."
+        if not bill.is_verified:
+            return f"Bill Number '{bill_number}' is not VERIFIED. Dispatch entry is only allowed for verified bills."
+
+    elif category_key in ('bill_verifications', 'bill_queries', 'bill_payments'):
         bill_number = row.get('bill_number')
         if not Bill.query.filter_by(bill_number=bill_number).first():
             return f"Bill Number '{bill_number}' does not exist in Bills Master."

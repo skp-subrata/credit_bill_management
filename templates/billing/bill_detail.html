@@ -176,6 +176,11 @@
             </div>
             {% endif %}
 
+            {% if not bill.is_verified %}
+            <div class="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2 mt-2">
+                <span>🔴 <strong>Dispatch Entry Blocked:</strong> This bill must be <strong>VERIFIED</strong> before dispatch details can be entered.</span>
+            </div>
+            {% else %}
             <form method="POST" action="{{ url_for('billing.dispatch_bill', bill_id=bill.bill_id) }}" class="space-y-3 pt-2">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
@@ -211,6 +216,7 @@
                     Record Dispatch Entry
                 </button>
             </form>
+            {% endif %}
         </div>
 
         <!-- 3. Payer Query Management -->

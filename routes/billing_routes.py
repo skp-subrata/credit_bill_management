@@ -176,6 +176,12 @@ def verify_bill(bill_id):
 @permission_required('dispatch_bill')
 def dispatch_bill(bill_id):
     bill = Bill.query.get_or_404(bill_id)
+
+    # Validation: Until a bill is VERIFIED, entering dispatch details is NOT allowed
+    if not bill.is_verified:
+        flash(f"Cannot dispatch bill '{bill.bill_number}'. The bill must be VERIFIED before dispatch details can be entered.", 'error')
+        return redirect(url_for('billing.bill_detail', bill_id=bill.bill_id))
+
     dispatch_date = request.form.get('dispatch_date')
 
     # Enforce Dispatch Date restriction (Today - 3 days to Today)

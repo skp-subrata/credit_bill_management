@@ -283,6 +283,13 @@ class Bill(db.Model):
 
         return 'GENERATED'
 
+    @property
+    def is_verified(self):
+        """Returns True if the bill has been verified or is at/past the VERIFIED lifecycle stage."""
+        if any(v.verification_status == 'VERIFIED' for v in (self.verifications or [])):
+            return True
+        return self.bill_status in ('VERIFIED', 'DISPATCHED', 'QUERIED', 'PARTIALLY_PAID', 'PAID', 'CLOSED')
+
     def update_lifecycle_status(self):
         """Updates and persists self.bill_status and delay metrics based on the highest completed lifecycle stage and SLA due dates."""
         self.bill_status = self.calculate_lifecycle_status()
