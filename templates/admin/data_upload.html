@@ -126,6 +126,7 @@
             <!-- Action Buttons -->
             <div class="flex items-center gap-3">
                 <form method="POST" action="{{ url_for('admin_upload.cancel_preview') }}">
+                    <input type="hidden" name="data_category" value="{{ preview_data.data_category }}">
                     <button type="submit" class="btn-secondary text-xs">
                         ✕ Cancel Preview
                     </button>
@@ -133,6 +134,7 @@
 
                 {% if preview_data.valid_count > 0 %}
                 <form method="POST" action="{{ url_for('admin_upload.import_data') }}">
+                    <input type="hidden" name="data_category" value="{{ preview_data.data_category }}">
                     <button type="submit" class="btn-primary bg-emerald-600 hover:bg-emerald-700 text-xs py-2 px-4 font-extrabold">
                         ✓ Import {{ preview_data.valid_count }} Record(s) into Database
                     </button>

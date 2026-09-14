@@ -4,7 +4,8 @@ from database import db
 from models import AdminUploadHistory, User
 from utils.auth import login_required, permission_required
 from utils.admin_upload_engine import (
-    DATA_CATEGORIES_CONFIG, generate_template, validate_admin_upload, execute_admin_import
+    DATA_CATEGORIES_CONFIG, generate_template, validate_admin_upload, execute_admin_import,
+    save_upload_stage, get_upload_stage, clear_upload_stage
 )
 
 admin_upload_bp = Blueprint('admin_upload', __name__, url_prefix='/admin/data-upload')
@@ -14,30 +15,41 @@ def check_admin_access():
     role = session.get('role_code')
     return role in ('super_admin', 'admin')
 
-# --- DATA UPLOAD MAIN SCREEN ---
+# --- MAIN DASHBOARD VIEW ---
 @admin_upload_bp.route('', methods=['GET'])
 @login_required
 def data_upload():
     if not check_admin_access():
-        flash("Access Denied: Admin or Super Admin permissions required for Data Upload.", "error")
+        flash("Access Denied: Only Super Admin and Admin users can access Data Upload Module.", "error")
         return redirect(url_for('main.dashboard'))
 
+    categories = [{'key': k, 'label': v['label']} for k, v in DATA_CATEGORIES_CONFIG.items()]
     history_logs = AdminUploadHistory.query.order_by(AdminUploadHistory.history_id.desc()).limit(50).all()
-    
-    categories = [
-        {'key': k, 'label': v['label']}
-        for k, v in DATA_CATEGORIES_CONFIG.items()
-    ]
+    user_id = session.get('user_id')
+    active_category = session.get('admin_upload_category')
 
-    return render_template('admin/data_upload.html', categories=categories, history_logs=history_logs)
+    preview_data = None
+    if active_category:
+        preview_data = get_upload_stage(user_id, active_category)
 
-# --- DYNAMIC TEMPLATE DOWNLOAD ---
-@admin_upload_bp.route('/template/<category_key>/<fmt>', methods=['GET'])
+    return render_template(
+        'admin/data_upload.html',
+        categories=categories,
+        history_logs=history_logs,
+        preview_data=preview_data
+    )
+
+# --- DOWNLOAD TEMPLATE ---
+@admin_upload_bp.route('/template/<category_key>', methods=['GET'])
 @login_required
-def download_template(category_key, fmt):
+def download_template(category_key):
     if not check_admin_access():
         flash("Access Denied.", "error")
         return redirect(url_for('main.dashboard'))
+
+    fmt = request.args.get('fmt', 'xlsx').lower()
+    if fmt not in ('xlsx', 'csv'):
+        fmt = 'xlsx'
 
     try:
         data_bytes, mimetype, filename = generate_template(category_key, fmt=fmt)
@@ -70,17 +82,11 @@ def validate_file():
         flash(report['error'], "error")
         return redirect(url_for('admin_upload.data_upload'))
 
-    # Store validation state in session temporarily for import execution
-    session['admin_upload_preview'] = {
-        'data_category': category_key,
-        'filename': file_storage.filename,
-        'valid_records': report['valid_records'],
-        'total_count': report['total_records'],
-        'valid_count': report['valid_count'],
-        'error_count': report['error_count'],
-        'duplicate_count': report['duplicate_count'],
-        'errors': report['errors']
-    }
+    user_id = session.get('user_id', 1)
+    
+    # Store validation state in server-side staging file
+    save_upload_stage(user_id, category_key, report)
+    session['admin_upload_category'] = category_key
 
     history_logs = AdminUploadHistory.query.order_by(AdminUploadHistory.history_id.desc()).limit(50).all()
     categories = [{'key': k, 'label': v['label']} for k, v in DATA_CATEGORIES_CONFIG.items()]
@@ -89,7 +95,7 @@ def validate_file():
         'admin/data_upload.html',
         categories=categories,
         history_logs=history_logs,
-        preview_data=session['admin_upload_preview']
+        preview_data=report
     )
 
 # --- EXECUTE IMPORT ---
@@ -100,29 +106,39 @@ def import_data():
         flash("Access Denied.", "error")
         return redirect(url_for('main.dashboard'))
 
-    preview = session.get('admin_upload_preview')
+    user_id = session.get('user_id', 1)
+    category_key = request.form.get('data_category') or session.get('admin_upload_category')
+
+    if not category_key:
+        flash("No active upload category specified.", "error")
+        return redirect(url_for('admin_upload.data_upload'))
+
+    preview = get_upload_stage(user_id, category_key)
     if not preview or not preview.get('valid_records'):
         flash("No validated preview data found to import.", "error")
         return redirect(url_for('admin_upload.data_upload'))
 
-    category_key = preview['data_category']
     valid_records = preview['valid_records']
     filename = preview['filename']
-    user_id = session.get('user_id')
 
     result = execute_admin_import(category_key, valid_records, user_id, filename)
 
-    # Clear preview session
-    session.pop('admin_upload_preview', None)
+    # Clear server-side staging file and session state
+    clear_upload_stage(user_id, category_key)
+    session.pop('admin_upload_category', None)
 
-    flash(f"Data Import Completed for '{category_key}'! Successfully imported {result['success_count']} record(s). (Failed: {result['failed_count']}).", "success")
+    flash(f"Data Import Completed for '{preview.get('category_label', category_key)}'! Successfully imported {result['success_count']} record(s). (Failed: {result['failed_count']}).", "success")
     return redirect(url_for('admin_upload.data_upload'))
 
 # --- CANCEL PREVIEW ---
 @admin_upload_bp.route('/cancel-preview', methods=['POST'])
 @login_required
 def cancel_preview():
-    session.pop('admin_upload_preview', None)
+    user_id = session.get('user_id', 1)
+    category_key = request.form.get('data_category') or session.get('admin_upload_category')
+    if category_key:
+        clear_upload_stage(user_id, category_key)
+    session.pop('admin_upload_category', None)
     flash("Upload preview cancelled.", "warning")
     return redirect(url_for('admin_upload.data_upload'))
 

@@ -572,3 +572,30 @@ def execute_admin_import(category_key, valid_records, user_id, filename):
         'failed_count': fail_count,
         'total_attempted': len(valid_records)
     }
+
+STAGING_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scratch', 'upload_staging')
+
+def save_upload_stage(user_id, category_key, report):
+    os.makedirs(STAGING_DIR, exist_ok=True)
+    file_path = os.path.join(STAGING_DIR, f"stage_{user_id}_{category_key}.json")
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    return file_path
+
+def get_upload_stage(user_id, category_key):
+    file_path = os.path.join(STAGING_DIR, f"stage_{user_id}_{category_key}.json")
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
+def clear_upload_stage(user_id, category_key):
+    file_path = os.path.join(STAGING_DIR, f"stage_{user_id}_{category_key}.json")
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception:
+            pass
